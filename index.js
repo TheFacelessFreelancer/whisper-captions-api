@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
 import fs from 'fs-extra';
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { buildAssSubtitle } from './utils/subtitleBuilder.js';
 import { renderSubtitledVideo } from './utils/ffmpeg.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
@@ -20,9 +20,9 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(express.json());
 
-const openai = new OpenAIApi(new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-}));
+});
 
 app.post('/generate', upload.single('video'), async (req, res) => {
   try {
@@ -33,22 +33,18 @@ app.post('/generate', upload.single('video'), async (req, res) => {
       animation, shadow
     } = req.body;
 
-    // Extract audio from video
     const audioPath = `uploads/audio-${Date.now()}.mp3`;
     await execAsync(`ffmpeg -i ${video.path} -q:a 0 -map a ${audioPath}`);
 
-    // Transcribe audio with OpenAI Whisper
-    const transcription = await openai.createTranscription(
-      fs.createReadStream(audioPath),
-      'whisper-1',
-      undefined,
-      'srt'
-    );
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(audioPath),
+      model: 'whisper-1',
+      response_format: 'srt'
+    });
 
     const srtPath = `uploads/${Date.now()}.srt`;
-    await fs.writeFile(srtPath, transcription.data, 'utf8');
+    await fs.writeFile(srtPath, transcription, 'utf8');
 
-    // Generate ASS subtitle file with style
     const assPath = await buildAssSubtitle({
       subtitlePath: srtPath,
       fontName,
@@ -63,28 +59,15 @@ app.post('/generate', upload.single('video'), async (req, res) => {
       shadow,
     });
 
-    // Render video with subtitles
     const outputPath = `uploads/output-${Date.now()}.mp4`;
     await renderSubtitledVideo({
       inputPath: video.path,
       subtitlePath: assPath,
-      fontName,
-      fontSize,
-      fontColor: textColor,
-      outlineColor,
-      alignment,
-      marginV,
-      blockStyle,
-      blockColor,
-      animation,
-      shadow,
       outputPath,
     });
 
-    // Upload final video to Cloudinary
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-    // Clean up temporary files
     await fs.remove(video.path);
     await fs.remove(audioPath);
     await fs.remove(srtPath);
