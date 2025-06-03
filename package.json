@@ -1,24 +1,17 @@
 {
-  "name": "styled-captions-api",
+  "name": "whisper-captions-api",
   "version": "1.0.0",
-  "description": "Captions App backend using Whisper API and FFmpeg",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.7",
-    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "form-data": "^4.0.0",
     "multer": "^1.4.5-lts.1",
-    "openai": "^4.27.0",
-    "uuid": "^9.0.1"
-  },
-  "engines": {
-    "node": ">=16.0.0"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+    "openai": "^4.21.1",
+    "ffmpeg-static": "^4.4.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "dotenv": "^16.3.1",
+    "cloudinary": "^2.3.0"
+  }
 }
