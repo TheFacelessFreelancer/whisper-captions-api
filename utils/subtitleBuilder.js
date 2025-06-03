@@ -9,7 +9,7 @@ export async function buildAssSubtitle({ subtitlePath, fontName, fontSize, fontC
   };
   const placement = positions[position] || '2';
 
-  const assStyle = \`
+  const assStyle = `
 [Script Info]
 ScriptType: v4.00+
 PlayResX: 1920
