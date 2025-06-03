@@ -1,8 +1,8 @@
 import express from 'express';
-import multer from 'multer';
 import cors from 'cors';
 import fs from 'fs-extra';
 import OpenAI from 'openai';
+import axios from 'axios';
 import { buildAssSubtitle } from './utils/subtitleBuilder.js';
 import { renderSubtitledVideo } from './utils/ffmpeg.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
@@ -13,7 +13,6 @@ import util from 'util';
 
 const execAsync = util.promisify(exec);
 const app = express();
-const upload = multer({ dest: 'uploads/' });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -24,18 +23,34 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-app.post('/generate', upload.single('video'), async (req, res) => {
+app.post('/generate', async (req, res) => {
   try {
-    const video = req.file;
     const {
+      video_url,
       fontName, fontSize, textColor, outlineColor,
       alignment, marginV, blockStyle, blockColor,
       animation, shadow
     } = req.body;
 
-    const audioPath = `uploads/audio-${Date.now()}.mp3`;
-    await execAsync(`ffmpeg -i ${video.path} -q:a 0 -map a ${audioPath}`);
+    // Download video
+    const videoPath = `uploads/input-${Date.now()}.mp4`;
+    const response = await axios({
+      method: 'GET',
+      url: video_url,
+      responseType: 'stream'
+    });
+    const writer = fs.createWriteStream(videoPath);
+    response.data.pipe(writer);
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
 
+    // Extract audio
+    const audioPath = `uploads/audio-${Date.now()}.mp3`;
+    await execAsync(`ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath}`);
+
+    // Transcribe with Whisper
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(audioPath),
       model: 'whisper-1',
@@ -45,6 +60,7 @@ app.post('/generate', upload.single('video'), async (req, res) => {
     const srtPath = `uploads/${Date.now()}.srt`;
     await fs.writeFile(srtPath, transcription, 'utf8');
 
+    // Generate ASS subtitle
     const assPath = await buildAssSubtitle({
       subtitlePath: srtPath,
       fontName,
@@ -59,16 +75,19 @@ app.post('/generate', upload.single('video'), async (req, res) => {
       shadow,
     });
 
+    // Render final video
     const outputPath = `uploads/output-${Date.now()}.mp4`;
     await renderSubtitledVideo({
-      inputPath: video.path,
+      inputPath: videoPath,
       subtitlePath: assPath,
       outputPath,
     });
 
+    // Upload to Cloudinary
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-    await fs.remove(video.path);
+    // Cleanup
+    await fs.remove(videoPath);
     await fs.remove(audioPath);
     await fs.remove(srtPath);
     await fs.remove(assPath);
