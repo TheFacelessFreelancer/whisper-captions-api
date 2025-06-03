@@ -12,6 +12,7 @@
     "ffmpeg-static": "^4.4.0",
     "fluent-ffmpeg": "^2.1.2",
     "dotenv": "^16.3.1",
-    "cloudinary": "^2.3.0"
+    "cloudinary": "^2.3.0",
+    "cors": "^2.8.5"
   }
 }
