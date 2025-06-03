@@ -1,0 +1,13 @@
+# Node modules
+node_modules/
+
+# Local env files
+.env
+.env.local
+
+# Uploaded and output files
+uploads/
+*.log
+
+# System files
+.DS_Store
