@@ -1,38 +1,21 @@
-import { exec } from 'child_process';
-import path from 'path';
 import fs from 'fs/promises';
 
-export async function renderSubtitledVideo({
-  inputPath,
+export async function buildAssSubtitle({
   subtitlePath,
-  fontName,
-  fontSize,
-  fontColor,
-  position,
-  effect,
-  background_box = false,
-  custom_margin_top = 40,
-  custom_margin_bottom = 120,
-  outputPath
+  fontName = 'Arial',
+  fontSize = 60,
+  fontColor = 'FFFFFF',
+  alignment = 'bottom',
+  marginV = 30,
+  animationType = 'none' // Options: none, word, word-typewriter, char, fade, bounce
 }) {
-  // ASS placement alignment codes
   const alignmentMap = {
-    top: 8,
-    center: 5,
-    bottom: 2,
-    'top-safe': 8,
-    'bottom-safe': 2
+    top: '1',
+    bottom: '2',
+    center: '8'
   };
 
-  const marginV = position === 'top' || position === 'top-safe'
-    ? custom_margin_top
-    : custom_margin_bottom;
-
-  const alignment = alignmentMap[position] || 2;
-
-  const primaryColor = `&H${fontColor.replace('#', '')}`;
-  const outlineColor = '&H000000';
-  const backColor = background_box ? '&H80000000' : '&H00000000';
+  const alignmentCode = alignmentMap[alignment] || '2';
 
   const assStyle = `
 [Script Info]
@@ -42,59 +25,47 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${primaryColor},${outlineColor},${backColor},0,0,0,0,100,100,0,0,1,2,0,${alignment},30,30,${marginV},1
+Style: Default,${fontName},${fontSize},&H00${fontColor},&H000000,&H000000,0,0,0,0,100,100,0,0,1,2,0,${alignmentCode},30,30,${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
   const rawSubs = await fs.readFile(subtitlePath, 'utf-8');
-  const subLines = rawSubs.split('\n').filter(Boolean);
+  const lines = rawSubs.split('\n').filter(Boolean);
 
-  const eventLines = subLines.map(line => {
-    const [times, text] = line.split(',', 2);
-    const [start, end] = times.split(' --> ');
+  const eventLines = [];
 
-    let effectTag = '';
-    let dialogueText = text;
+  for (const line of lines) {
+    const [start, end, text] = line.split(',');
+    let transformedText = text;
 
-    switch (effect) {
+    switch (animationType) {
+      case 'word':
+        transformedText = text.split(' ').map(word => `{\\k20}${word}`).join(' ');
+        break;
+      case 'word-typewriter':
+        transformedText = text.split(' ').map(word => `{\\kf20}${word}`).join(' ');
+        break;
+      case 'char':
+        transformedText = text.split('').map(char => `{\\kf10}${char}`).join('');
+        break;
       case 'fade':
-        effectTag = '\\fade(0,255,0,200,300)';
+        transformedText = `{\\fad(200,200)}${text}`;
         break;
       case 'bounce':
-        effectTag = '\\move(960,1080,960,900)';
+        transformedText = `{\\move(960,1000,960,900)}${text}`;
         break;
-      case 'typewriter':
-        effectTag = '\\k20';
-        break;
-      case 'word-by-word':
-        effectTag = ''; // individual word lines will be split below
+      default:
         break;
     }
 
-    if (effect === 'word-by-word') {
-      const words = text.split(' ');
-      return words.map((word, idx) => {
-        return `Dialogue: 0,${start},${end},Default,,0,0,0,,${word}`;
-      }).join('\n');
-    }
+    eventLines.push(`Dialogue: 0,${start},${end},Default,,0,0,0,,${transformedText}`);
+  }
 
-    return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${effectTag}}${dialogueText}`;
-  });
-
-  const assText = assStyle + eventLines.join('\n');
+  const finalAss = assStyle + eventLines.join('\n');
   const assPath = subtitlePath.replace('.srt', '.ass');
-  await fs.writeFile(assPath, assText, 'utf-8');
 
-  return new Promise((resolve, reject) => {
-    const command = `ffmpeg -i "${inputPath}" -vf "ass='${assPath}'" -c:a copy "${outputPath}" -y`;
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(outputPath);
-      }
-    });
-  });
+  await fs.writeFile(assPath, finalAss, 'utf-8');
+  return assPath;
 }
