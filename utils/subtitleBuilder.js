@@ -1,14 +1,17 @@
 import fs from 'fs/promises';
 
 function parseSRT(srt) {
-  const blocks = srt.trim().split('\n\n');
-  return blocks.map(block => {
-    const lines = block.split('\n');
-    const time = lines[1];
-    const text = lines.slice(2).join('\\N'); // ASS line break
-    const [start, end] = time.replace(',', '.').split(' --> ');
-    return { start, end, text };
-  });
+  const blocks = srt.trim().split(/\n\s*\n/);
+  return blocks
+    .map(block => {
+      const lines = block.trim().split(/\r?\n/);
+      if (lines.length < 3) return null;
+      const timeLine = lines[1];
+      const [start, end] = timeLine.replace(/,/g, '.').split(' --> ');
+      const text = lines.slice(2).join('\\N'); // ASS line break
+      return { start, end, text };
+    })
+    .filter(Boolean);
 }
 
 export async function buildAssSubtitle({
@@ -54,6 +57,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
   const rawSRT = await fs.readFile(subtitlePath, 'utf-8');
   const events = parseSRT(rawSRT);
+  console.log('📝 Parsed subtitle events:', events);
 
   const assLines = events.map(({ start, end, text }) => {
     let effect = '';
