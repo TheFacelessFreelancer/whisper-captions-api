@@ -13,6 +13,9 @@ import util from 'util';
 
 const execAsync = util.promisify(exec);
 const app = express();
+const uploadDir = 'uploads';
+await fs.ensureDir(uploadDir);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -37,7 +40,7 @@ app.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'Missing required field: video_url' });
     }
 
-    const videoPath = `uploads/input-${Date.now()}.mp4`;
+    const videoPath = `${uploadDir}/input-${Date.now()}.mp4`;
     console.log('📥 Downloading video from:', video_url);
 
     const response = await axios({
@@ -46,17 +49,25 @@ app.post('/generate', async (req, res) => {
       responseType: 'stream'
     });
 
-    const writer = fs.createWriteStream(videoPath);
-    response.data.pipe(writer);
     await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
+      const writer = fs.createWriteStream(videoPath);
+      response.data.pipe(writer);
+      writer.on('finish', () => {
+        console.log('✅ Video file saved:', videoPath);
+        resolve();
+      });
       writer.on('error', (err) => {
         console.error('❌ Video download error:', err);
         reject(err);
       });
     });
 
-    const audioPath = `uploads/audio-${Date.now()}.mp3`;
+    const fileExists = await fs.pathExists(videoPath);
+    if (!fileExists) {
+      throw new Error(`File not saved properly: ${videoPath}`);
+    }
+
+    const audioPath = `${uploadDir}/audio-${Date.now()}.mp3`;
     console.log('🔊 Extracting audio with FFmpeg...');
     await execAsync(`ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath}`);
 
@@ -67,7 +78,7 @@ app.post('/generate', async (req, res) => {
       response_format: 'srt'
     });
 
-    const srtPath = `uploads/${Date.now()}.srt`;
+    const srtPath = `${uploadDir}/${Date.now()}.srt`;
     await fs.writeFile(srtPath, transcription, 'utf8');
 
     console.log('🎨 Building styled subtitle file...');
@@ -85,42 +96,4 @@ app.post('/generate', async (req, res) => {
       shadow,
     });
 
-    const outputPath = `uploads/output-${Date.now()}.mp4`;
-    console.log('🎬 Rendering final subtitled video...');
-    await renderSubtitledVideo({
-      inputPath: videoPath,
-      subtitlePath: assPath,
-      outputPath,
-    });
-
-    console.log('☁️ Uploading to Cloudinary...');
-    const cloudinaryUrl = await uploadToCloudinary(outputPath);
-
-    console.log('🧹 Cleaning up temp files...');
-    await fs.remove(videoPath);
-    await fs.remove(audioPath);
-    await fs.remove(srtPath);
-    await fs.remove(assPath);
-    await fs.remove(outputPath);
-
-    console.log('✅ Returning result:', cloudinaryUrl);
-    res.json({ video_url: cloudinaryUrl });
-
-  } catch (err) {
-    console.error('❌ FULL ERROR STACK:', err);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: err.message,
-      stack: err.stack
-    });
-  }
-});
-
-app.get('/ping', (req, res) => {
-  res.send('Server is up!');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is listening on port ${PORT}`);
-});
+    const outputPath = `${uploadDir}/output-${Date.now()}.mp4`;
