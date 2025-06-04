@@ -1,73 +1,47 @@
-import fs from 'fs/promises';
+import fs from 'fs-extra';
+import path from 'path';
 
-function parseSRT(srt) {
-  const blocks = srt.trim().split(/\n\s*\n/);
-  return blocks
-    .map(block => {
-      const lines = block.trim().split(/\r?\n/);
-      if (lines.length < 3) return null;
-      const timeLine = lines[1];
-      const [start, end] = timeLine.replace(/,/g, '.').split(' --> ');
-      const text = lines.slice(2).join('\\N'); // ASS line break
-      return { start, end, text };
-    })
-    .filter(Boolean);
+function escapeAss(text) {
+  return text.replace(/\\/g, '\\\\').replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/\n/g, '\\N');
 }
 
-export async function buildAssSubtitle({
-  subtitlePath,
-  fontName,
-  fontSize,
-  fontColor,
-  outlineColor,
-  alignment,
-  marginV,
-  blockStyle,
-  blockColor,
-  animation,
-  shadow
-}) {
-  const placementMap = {
-    'bottom': 2,
-    'top': 8,
-    'center': 5,
-    'bottom-safe': 2,
-    'top-safe': 8
-  };
-
-  const assAlignment = placementMap[alignment] || 2;
-
-  const outlineHex = '&H' + outlineColor + '&';
-  const primaryHex = '&H' + fontColor + '&';
-  const backHex = blockStyle ? '&H' + blockColor + '&' : '&H000000&';
-
-  const style = `
+export function buildAssSubtitles(subtitles, outputPath) {
+  const styleName = 'Default';
+  const assHeader = `
 [Script Info]
+Title: Captions App
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.601
 
 [V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${primaryHex},${outlineHex},${backHex},0,0,0,0,100,100,0,0,1,2,${shadow},${assAlignment},20,20,${marginV},1
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: ${styleName},Arial,60,&H00000000,&H00000000,&H00000000,&H99FFFFFF,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,1150,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-`;
+`.trim();
 
-  const rawSRT = await fs.readFile(subtitlePath, 'utf-8');
-  const events = parseSRT(rawSRT);
-  console.log('📝 Parsed subtitle events:', events);
-
-  const assLines = events.map(({ start, end, text }) => {
-    let effect = '';
-    if (animation === 'fade') effect = '\\fad(300,300)';
-    else if (animation === 'bounce') effect = '\\move(540,2100,540,1600)';
-    return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${effect}}${text}`;
+  const assEvents = subtitles.map((line) => {
+    const start = line.start;
+    const end = line.end;
+    const text = escapeAss(line.text);
+    const styledText = `{\\an8\\fade(0,255,0,500,0)}` + text;
+    return `Dialogue: 0,${start},${end},${styleName},,0,0,0,,${styledText}`;
   });
 
-  const finalContent = style + assLines.join('\n');
-  const assPath = subtitlePath.replace('.srt', '.ass');
-  await fs.writeFile(assPath, finalContent, 'utf-8');
-  return assPath;
+  const fullAss = [assHeader, ...assEvents].join('\n');
+  fs.ensureFileSync(outputPath);
+  fs.writeFileSync(outputPath, fullAss, 'utf8');
+}
+
+function formatAssTime(seconds) {
+  const hr = Math.floor(seconds / 3600);
+  const min = Math.floor((seconds % 3600) / 60);
+  const sec = Math.floor(seconds % 60);
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${hr}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 }
