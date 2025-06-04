@@ -1,69 +1,49 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import fs from 'fs-extra';
-import axios from 'axios';
-import ffmpeg from 'fluent-ffmpeg';
-import { v4 as uuidv4 } from 'uuid';
-import { buildAssSubtitles } from './utils/subtitleBuilder.js';
-import uploadToCloudinary from './utils/cloudinary.js';
+import fs from 'fs/promises';
+import path from 'path';
 
-const app = express();
-const port = 10000;
+/**
+ * Build ASS subtitle string with styling and animation.
+ * @param {Array} events - Array of subtitle events with start, end, and text.
+ * @returns {string} - ASS subtitle content
+ */
+export function buildAssSubtitle(events) {
+  const assHeader = `
+[Script Info]
+Title: Captions App Subtitles
+ScriptType: v4.00+
+PlayDepth: 0
+Collisions: Normal
+Timer: 100.0000
 
-app.use(bodyParser.json({ limit: '100mb' }));
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: WhiteBox,Arial,42,&HFFFFFF,&H80000000,0,0,0,0,100,100,0,0,3,0,0,8,20,20,150,1
+Style: Default,Arial,42,&H0,&H0,0,0,0,0,100,100,0,0,1,0,0,8,20,20,150,1
 
-app.post('/generate-subtitles', async (req, res) => {
-  const { videoUrl, captions } = req.body;
-  const uid = Date.now();
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`.trim();
 
-  const videoPath = `uploads/input-${uid}.mp4`;
-  const assPath = `uploads/${uid}.ass`;
-  const outputPath = `uploads/output-${uid}.mp4`;
+  const assEvents = events.map((event) => {
+    const fade = `\\fad(200,200)`;
+    const alignment = `\\an8`; // Top-center
+    const textEscaped = event.text.replace(/\n/g, '\\N');
 
-  try {
-    console.log(`🎬 Starting subtitle generation for: ${videoUrl}`);
+    return `
+Dialogue: 0,${event.start},${event.end},WhiteBox,,0,0,0,,${alignment}${textEscaped}
+Dialogue: 1,${event.start},${event.end},Default,,0,0,0,,${alignment}${fade}${textEscaped}
+    `.trim();
+  }).join('\n');
 
-    const response = await axios({ method: 'GET', url: videoUrl, responseType: 'stream' });
-    await fs.ensureFile(videoPath);
-    const writer = fs.createWriteStream(videoPath);
-    response.data.pipe(writer);
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-    console.log('✅ Video downloaded:', videoPath);
+  return `${assHeader}\n${assEvents}`;
+}
 
-    const assContent = buildAssSubtitles(captions);
-    await fs.outputFile(assPath, assContent);
-    console.log('✅ ASS file written:', assPath);
-
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .videoFilters(`ass='${assPath}'`)
-        .outputOptions(['-c:a copy', '-vf scale=720:-2'])
-        .on('end', resolve)
-        .on('error', reject)
-        .save(outputPath);
-    });
-    console.log('✅ Final video rendered:', outputPath);
-
-    const cloudinaryUrl = await uploadToCloudinary(outputPath);
-    console.log('✅ Uploaded to Cloudinary:', cloudinaryUrl);
-
-    res.json({ videoUrl: cloudinaryUrl });
-  } catch (error) {
-    console.error('❌ FULL ERROR STACK:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error' });
-  } finally {
-    await Promise.all([
-      fs.remove(videoPath),
-      fs.remove(assPath),
-      fs.remove(outputPath),
-    ]);
-    console.log('🧹 Cleaned up temporary files.');
-  }
-});
-
-app.listen(port, () => {
-  console.log(`🚀 Server is listening on port ${port}`);
-});
+/**
+ * Save ASS subtitle content to file.
+ * @param {string} filePath - Destination path
+ * @param {string} assContent - ASS subtitle text
+ */
+export async function saveSubtitleFile(filePath, assContent) {
+  const fullPath = path.resolve(filePath);
+  await fs.writeFile(fullPath, assContent);
+}
