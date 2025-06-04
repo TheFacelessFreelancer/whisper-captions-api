@@ -97,3 +97,41 @@ app.post('/generate', async (req, res) => {
     });
 
     const outputPath = `${uploadDir}/output-${Date.now()}.mp4`;
+    console.log('🎬 Rendering final subtitled video...');
+    await renderSubtitledVideo({
+      inputPath: videoPath,
+      subtitlePath: assPath,
+      outputPath,
+    });
+
+    console.log('☁️ Uploading to Cloudinary...');
+    const cloudinaryUrl = await uploadToCloudinary(outputPath);
+
+    console.log('🧹 Cleaning up temp files...');
+    await fs.remove(videoPath);
+    await fs.remove(audioPath);
+    await fs.remove(srtPath);
+    await fs.remove(assPath);
+    await fs.remove(outputPath);
+
+    console.log('✅ Returning result:', cloudinaryUrl);
+    res.json({ video_url: cloudinaryUrl });
+
+  } catch (err) {
+    console.error('❌ FULL ERROR STACK:', err);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
+      stack: err.stack
+    });
+  }
+});
+
+app.get('/ping', (req, res) => {
+  res.send('Server is up!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server is listening on port ${PORT}`);
+});
