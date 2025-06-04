@@ -1,123 +1,83 @@
 import express from 'express';
-import cors from 'cors';
+import bodyParser from 'body-parser';
 import fs from 'fs-extra';
-import axios from 'axios';
-import { buildAssSubtitle, saveSubtitleFile } from './utils/subtitleBuilder.js';
-import { renderSubtitledVideo } from './utils/ffmpeg.js';
-import { uploadToCloudinary } from './utils/cloudinary.js';
 import path from 'path';
+import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';
+import { buildAssSubtitle } from './utils/subtitleBuilder.js';
+import whisperTranscribe from './utils/whisper.js';
+import uploadToCloudinary from './utils/cloudinary.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-const app = express();
-const uploadDir = 'uploads';
-await fs.ensureDir(uploadDir);
-
+const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(cors());
-app.use(express.json());
+const app = express();
+const port = 10000;
 
-app.post('/generate', async (req, res) => {
+app.use(bodyParser.json({ limit: '100mb' }));
+
+app.post('/subtitles', async (req, res) => {
+  const { videoUrl, fontSize = 42, fontColor = '&H00FFFFFF', fontName = 'Arial', 
+          outlineColor = '&H00000000', outlineWidth = 4, alignment = 8, 
+          marginV = 300, animation = true, box = true, boxColor = '&H00000000' } = req.body;
+
+  const id = Date.now();
+  const videoPath = `uploads/input-${id}.mp4`;
+  const audioPath = `uploads/input-${id}.mp3`;
+  const subtitlePath = `uploads/${id}.ass`;
+  const outputPath = `uploads/output-${id}.mp4`;
+
   try {
-    const {
-      video_url,
-      fontName, fontSize, textColor, outlineColor,
-      alignment, marginV, blockStyle, blockColor,
-      animation, shadow
-    } = req.body;
-
-    if (!video_url) {
-      return res.status(400).json({ error: 'Missing video_url' });
-    }
-
-    const videoPath = `${uploadDir}/input-${Date.now()}.mp4`;
-    console.log('📥 Downloading video from:', video_url);
-
-    const response = await axios({
-      method: 'GET',
-      url: video_url,
-      responseType: 'stream'
-    });
-
-    await new Promise((resolve, reject) => {
-      const writer = fs.createWriteStream(videoPath);
-      response.data.pipe(writer);
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-
+    console.log(`📥 Downloading video from: ${videoUrl}`);
+    const response = await fetch(videoUrl);
+    const buffer = await response.buffer();
+    await fs.ensureFile(videoPath);
+    await fs.writeFile(videoPath, buffer);
     console.log('✅ Video file saved:', videoPath);
 
-    const audioPath = `${uploadDir}/audio-${Date.now()}.mp3`;
     console.log('🔊 Extracting audio with FFmpeg...');
-    await fs.remove(audioPath);
-    await new Promise((resolve, reject) => {
-      const ffmpeg = require('child_process').exec;
-      ffmpeg(`ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath}`, (error) => {
-        if (error) reject(error);
-        else resolve();
-      });
-    });
+    await execAsync(`ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath} -y`);
 
     console.log('📝 Transcribing audio with Whisper...');
-    const openai = new (await import('openai')).default({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(audioPath),
-      model: 'whisper-1',
-      response_format: 'srt'
-    });
-
-    const srtPath = `${uploadDir}/${Date.now()}.srt`;
-    await fs.writeFile(srtPath, transcription, 'utf8');
-
-    function parseSRT(srt) {
-      const blocks = srt.trim().split(/\n\s*\n/);
-      return blocks.map(block => {
-        const lines = block.split(/\r?\n/);
-        if (lines.length < 3) return null;
-        const timeLine = lines[1];
-        const [start, end] = timeLine.replace(/,/g, '.').split(' --> ');
-        const text = lines.slice(2).join('\\N');
-        return { start, end, text };
-      }).filter(Boolean);
-    }
+    const transcript = await whisperTranscribe(audioPath);
 
     console.log('🎨 Building styled subtitle file...');
-    const events = parseSRT(transcription);
-    const assContent = buildAssSubtitle(events);
-    const assPath = srtPath.replace('.srt', '.ass');
-    await saveSubtitleFile(assPath, assContent);
-
-    const outputPath = `${uploadDir}/output-${Date.now()}.mp4`;
-    await renderSubtitledVideo({
-      inputPath: videoPath,
-      subtitlePath: assPath,
-      outputPath,
+    const events = transcript.segments.map((segment) => ({
+      start: segment.start,
+      end: segment.end,
+      text: segment.text,
+    }));
+    const assContent = buildAssSubtitle(events, {
+      fontSize,
+      fontColor,
+      fontName,
+      outlineColor,
+      outlineWidth,
+      alignment,
+      marginV,
+      animation,
+      box,
+      boxColor
     });
+    await fs.writeFile(subtitlePath, assContent);
 
+    console.log('🎬 Rendering final video with subtitles...');
+    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:a copy "${outputPath}" -y`);
+
+    console.log('☁️ Uploading final video to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-    await fs.remove(videoPath);
-    await fs.remove(audioPath);
-    await fs.remove(srtPath);
-    await fs.remove(assPath);
-    await fs.remove(outputPath);
-
-    res.json({ video_url: cloudinaryUrl });
+    console.log('✅ Done! Final video URL:', cloudinaryUrl);
+    res.json({ success: true, url: cloudinaryUrl });
   } catch (err) {
     console.error('❌ FULL ERROR STACK:', err);
-    res.status(500).json({ error: err.message || 'Internal Server Error' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/ping', (req, res) => {
-  res.send('Server is up!');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is listening on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`🚀 Server is listening on port ${port}`);
 });
