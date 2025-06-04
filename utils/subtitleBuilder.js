@@ -1,60 +1,69 @@
 import fs from 'fs/promises';
 
+function parseSRT(srt) {
+  const blocks = srt.trim().split('\n\n');
+  return blocks.map(block => {
+    const lines = block.split('\n');
+    const time = lines[1];
+    const text = lines.slice(2).join('\\N'); // ASS line break
+    const [start, end] = time.replace(',', '.').split(' --> ');
+    return { start, end, text };
+  });
+}
+
 export async function buildAssSubtitle({
   subtitlePath,
-  fontName = 'Arial',
-  fontSize = 40,
-  fontColor = 'FFFFFF',
-  outlineColor = '000000',
-  bold = false,
-  italic = false,
-  underline = false,
-  alignment = 'bottom-safe',
-  marginV = 100,
-  blockStyle = false,
-  blockColor = '000000',
-  animation = 'none',
-  shadow = 0,
+  fontName,
+  fontSize,
+  fontColor,
+  outlineColor,
+  alignment,
+  marginV,
+  blockStyle,
+  blockColor,
+  animation,
+  shadow
 }) {
-  const alignmentMap = {
-    'top-safe': 7,
+  const placementMap = {
+    'bottom': 2,
+    'top': 8,
+    'center': 5,
     'bottom-safe': 2,
-    'center-safe': 5,
+    'top-safe': 8
   };
-  const placement = alignmentMap[alignment] || 2;
 
-  const boolToInt = (value) => value ? -1 : 0;
+  const assAlignment = placementMap[alignment] || 2;
 
-  const assStyle = `[Script Info]
+  const outlineHex = '&H' + outlineColor + '&';
+  const primaryHex = '&H' + fontColor + '&';
+  const backHex = blockStyle ? '&H' + blockColor + '&' : '&H000000&';
+
+  const style = `
+[Script Info]
 ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
+PlayResX: 1080
+PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},&H00${fontColor},&H00${outlineColor},&H00${blockColor},${boolToInt(bold)},${boolToInt(italic)},${boolToInt(underline)},0,100,100,0,0,1,1,${shadow},${placement},30,30,${marginV},1
+Style: Default,${fontName},${fontSize},${primaryHex},${outlineHex},${backHex},0,0,0,0,100,100,0,0,1,2,${shadow},${assAlignment},20,20,${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  const rawSubs = await fs.readFile(subtitlePath, 'utf-8');
-  const srtLines = rawSubs.split('\n');
+  const rawSRT = await fs.readFile(subtitlePath, 'utf-8');
+  const events = parseSRT(rawSRT);
 
-  let subs = [];
-  for (let i = 0; i < srtLines.length; i++) {
-    if (srtLines[i].match(/\d+:\d+:\d+,\d+/)) {
-      const startTime = srtLines[i].split(' --> ')[0].replace(',', '.');
-      const endTime = srtLines[i].split(' --> ')[1].replace(',', '.');
-      const text = srtLines[i + 1] || '';
-      const effect = animation !== 'none' ? animation : '';
-      subs.push(`Dialogue: 0,${startTime},${endTime},Default,,0,0,0,${effect},${text}`);
-      i += 1;
-    }
-  }
+  const assLines = events.map(({ start, end, text }) => {
+    let effect = '';
+    if (animation === 'fade') effect = '\\fad(300,300)';
+    else if (animation === 'bounce') effect = '\\move(540,2100,540,1600)';
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${effect}}${text}`;
+  });
 
-  const finalSub = assStyle + subs.join('\n');
+  const finalContent = style + assLines.join('\n');
   const assPath = subtitlePath.replace('.srt', '.ass');
-  await fs.writeFile(assPath, finalSub, 'utf-8');
+  await fs.writeFile(assPath, finalContent, 'utf-8');
   return assPath;
 }
