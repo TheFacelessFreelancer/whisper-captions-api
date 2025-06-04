@@ -32,25 +32,35 @@ app.post('/generate', async (req, res) => {
       animation, shadow
     } = req.body;
 
-    // Download video
+    if (!video_url) {
+      console.error('Missing required field: video_url');
+      return res.status(400).json({ error: 'Missing required field: video_url' });
+    }
+
     const videoPath = `uploads/input-${Date.now()}.mp4`;
+    console.log('📥 Downloading video from:', video_url);
+
     const response = await axios({
       method: 'GET',
       url: video_url,
       responseType: 'stream'
     });
+
     const writer = fs.createWriteStream(videoPath);
     response.data.pipe(writer);
     await new Promise((resolve, reject) => {
       writer.on('finish', resolve);
-      writer.on('error', reject);
+      writer.on('error', (err) => {
+        console.error('❌ Video download error:', err);
+        reject(err);
+      });
     });
 
-    // Extract audio
     const audioPath = `uploads/audio-${Date.now()}.mp3`;
+    console.log('🔊 Extracting audio with FFmpeg...');
     await execAsync(`ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath}`);
 
-    // Transcribe with Whisper
+    console.log('📝 Transcribing audio with Whisper...');
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(audioPath),
       model: 'whisper-1',
@@ -60,7 +70,7 @@ app.post('/generate', async (req, res) => {
     const srtPath = `uploads/${Date.now()}.srt`;
     await fs.writeFile(srtPath, transcription, 'utf8');
 
-    // Generate ASS subtitle
+    console.log('🎨 Building styled subtitle file...');
     const assPath = await buildAssSubtitle({
       subtitlePath: srtPath,
       fontName,
@@ -75,28 +85,34 @@ app.post('/generate', async (req, res) => {
       shadow,
     });
 
-    // Render final video
     const outputPath = `uploads/output-${Date.now()}.mp4`;
+    console.log('🎬 Rendering final subtitled video...');
     await renderSubtitledVideo({
       inputPath: videoPath,
       subtitlePath: assPath,
       outputPath,
     });
 
-    // Upload to Cloudinary
+    console.log('☁️ Uploading to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-    // Cleanup
+    console.log('🧹 Cleaning up temp files...');
     await fs.remove(videoPath);
     await fs.remove(audioPath);
     await fs.remove(srtPath);
     await fs.remove(assPath);
     await fs.remove(outputPath);
 
+    console.log('✅ Returning result:', cloudinaryUrl);
     res.json({ video_url: cloudinaryUrl });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Something went wrong.');
+    console.error('❌ FULL ERROR STACK:', err);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
+      stack: err.stack
+    });
   }
 });
 
@@ -106,5 +122,5 @@ app.get('/ping', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
+  console.log(`🚀 Server is listening on port ${PORT}`);
 });
