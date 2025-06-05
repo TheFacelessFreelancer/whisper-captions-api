@@ -1,10 +1,15 @@
-import fs from 'fs-extra';
+import fs from 'fs';
+import path from 'path';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
+import { fileURLToPath } from 'url';
 
-export default async function whisperTranscribe(audioPath) {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const whisperTranscribe = async (audioPath) => {
   const form = new FormData();
-  form.append('file', fs.createReadStream(audioPath));
+  form.append('file', fs.createReadStream(path.resolve(audioPath)));
   form.append('model', 'whisper-1');
   form.append('response_format', 'verbose_json');
 
@@ -17,10 +22,16 @@ export default async function whisperTranscribe(audioPath) {
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Whisper API Error: ${err}`);
+    const errorText = await response.text();
+    throw new Error(`Whisper API error: ${errorText}`);
   }
 
-  const result = await response.json();
-  return result;
-}
+  const data = await response.json();
+  return data.segments.map((segment) => ({
+    start: segment.start.toFixed(3),
+    end: segment.end.toFixed(3),
+    text: segment.text.trim(),
+  }));
+};
+
+export default whisperTranscribe;
