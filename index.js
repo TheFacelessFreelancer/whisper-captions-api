@@ -1,4 +1,5 @@
-import express from 'express'; 
+// index.js
+import express from 'express';
 import bodyParser from 'body-parser';
 import fs from 'fs-extra';
 import path from 'path';
@@ -45,15 +46,16 @@ app.post('/subtitles', async (req, res) => {
       throw new Error('Invalid video URL. Must be an absolute URL.');
     }
 
-    console.log(`📥 Downloading video from: ${videoUrl}`);
+    console.log(`\n📥 Downloading video from: ${videoUrl}`);
     const response = await fetch(videoUrl);
-    const buffer = await response.buffer();
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     await fs.ensureFile(videoPath);
     await fs.writeFile(videoPath, buffer);
     console.log('✅ Video file saved:', videoPath);
 
     console.log('🔊 Extracting audio with FFmpeg...');
-    await execAsync(`ffmpeg -i "${videoPath}" -q:a 0 -map a "${audioPath}" -y`);
+    await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`);
 
     console.log('📝 Transcribing audio with Whisper...');
     const transcript = await whisperTranscribe(audioPath);
@@ -79,30 +81,19 @@ app.post('/subtitles', async (req, res) => {
     await fs.writeFile(subtitlePath, assContent);
 
     console.log('🎬 Rendering final video with subtitles...');
-    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:a copy "${outputPath}" -y`);
+    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:v libx264 -preset fast -crf 23 -c:a copy "${outputPath}" -y`);
 
-    // 🧱 Cloudinary upload wrapped in try/catch to avoid silent failure
-    try {
-      console.log('☁️ Uploading final video to Cloudinary...');
-      const cloudinaryUrl = await uploadToCloudinary(outputPath);
-      console.log('✅ Done! Final video URL:', cloudinaryUrl);
+    console.log('☁️ Uploading final video to Cloudinary...');
+    const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-      res.json({ success: true, url: cloudinaryUrl });
-      console.log('📤 Response sent to client.');
-    } catch (cloudErr) {
-      console.error('❌ Cloudinary Upload Failed:', cloudErr);
-      res.status(500).json({ success: false, error: cloudErr.message });
-    }
+    console.log('✅ Done! Final video URL:', cloudinaryUrl);
+    res.json({ success: true, url: cloudinaryUrl });
   } catch (err) {
     console.error('❌ FULL ERROR STACK:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/ping', (req, res) => {
-  res.send('Server is up!');
-});
-
 app.listen(port, () => {
-  console.log(`🚀 Server is listening on port ${port}`);
+  console.log(`\n🚀 Server is listening on port ${port}`);
 });
