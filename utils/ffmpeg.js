@@ -1,20 +1,14 @@
 import { exec } from 'child_process';
+import { promisify } from 'util';
 
-export async function renderSubtitledVideo({
-  inputPath,
-  subtitlePath,
-  outputPath
-}) {
-  return new Promise((resolve, reject) => {
-    const command = `ffmpeg -i "${inputPath}" -vf "ass='${subtitlePath}',scale=720:1280" -c:a copy "${outputPath}" -y`;
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error('❌ FFmpeg Error:', error);
-        reject(error);
-      } else {
-        console.log('✅ FFmpeg completed');
-        resolve(outputPath);
-      }
-    });
-  });
+const execAsync = promisify(exec);
+
+export async function extractAudio(videoPath, audioPath) {
+  const command = `ffmpeg -i ${videoPath} -q:a 0 -map a ${audioPath} -y`;
+  return execAsync(command);
+}
+
+export async function renderVideoWithSubtitles(videoPath, subtitlePath, outputPath) {
+  const command = `ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:a copy "${outputPath}" -y`;
+  return execAsync(command);
 }
