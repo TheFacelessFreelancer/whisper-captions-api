@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'express'; 
 import bodyParser from 'body-parser';
 import fs from 'fs-extra';
 import path from 'path';
@@ -81,15 +81,26 @@ app.post('/subtitles', async (req, res) => {
     console.log('🎬 Rendering final video with subtitles...');
     await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:a copy "${outputPath}" -y`);
 
-    console.log('☁️ Uploading final video to Cloudinary...');
-    const cloudinaryUrl = await uploadToCloudinary(outputPath);
+    // 🧱 Cloudinary upload wrapped in try/catch to avoid silent failure
+    try {
+      console.log('☁️ Uploading final video to Cloudinary...');
+      const cloudinaryUrl = await uploadToCloudinary(outputPath);
+      console.log('✅ Done! Final video URL:', cloudinaryUrl);
 
-    console.log('✅ Done! Final video URL:', cloudinaryUrl);
-    res.json({ success: true, url: cloudinaryUrl });
+      res.json({ success: true, url: cloudinaryUrl });
+      console.log('📤 Response sent to client.');
+    } catch (cloudErr) {
+      console.error('❌ Cloudinary Upload Failed:', cloudErr);
+      res.status(500).json({ success: false, error: cloudErr.message });
+    }
   } catch (err) {
     console.error('❌ FULL ERROR STACK:', err);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+app.get('/ping', (req, res) => {
+  res.send('Server is up!');
 });
 
 app.listen(port, () => {
