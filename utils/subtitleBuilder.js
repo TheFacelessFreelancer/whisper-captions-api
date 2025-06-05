@@ -1,49 +1,61 @@
 // utils/subtitleBuilder.js
 
-export function buildAssSubtitle(events, {
-  fontSize = 42,
-  fontColor = '&H00FFFFFF',
-  fontName = 'Arial',
-  outlineColor = '&H00000000',
-  outlineWidth = 4,
-  alignment = 8,
-  marginV = 300,
-  animation = true,
-  box = true,
-  boxColor = '&H00000000'
-} = {}) {
-  const style = `
+export function buildAssSubtitle(events, options) {
+  const {
+    fontSize,
+    fontColor,
+    fontName,
+    outlineColor,
+    outlineWidth,
+    alignment,
+    marginV,
+    animation,
+    box,
+    boxColor,
+  } = options;
+
+  const header = `
 [Script Info]
 ScriptType: v4.00+
-PlayResX: 1280
-PlayResY: 720
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,-1,0,0,0,100,100,0,0,1,${outlineWidth},0,${alignment},10,10,${marginV},1
+Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,0,0,0,0,100,100,0,0,1,${outlineWidth},0,${alignment},30,30,${marginV},1
 
 [Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`; 
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
 
-  const dialogue = events.map((e, i) => {
-    const start = toAssTime(e.start);
-    const end = toAssTime(e.end);
-    const fade = animation ? `\fad(200,200)` : '';
-    const boxTag = box ? `\1c&H000000&\3c&H000000&\bord10\shad0` : '';
-    return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${fade}${boxTag}}${escapeAssText(e.text)}`;
-  }).join('\n');
+  const formattedEvents = events.map(({ start, end, text }) => {
+    const formattedStart = formatTime(start);
+    const formattedEnd = formatTime(end);
+    const dialogue = `Dialogue: 0,${formattedStart},${formattedEnd},Default,,0,0,0,,{\\an5${animation ? '\\fade(0,255,255,200)' : ''}${box ? `\\bord10\\shad0\\3c${assColor(boxColor)}` : ''}}${text.replace(/(\r\n|\n|\r)/gm, '')}`;
+    return dialogue;
+  });
 
-  return `${style}\n${dialogue}`;
+  return header + formattedEvents.join('\n');
 }
 
-function toAssTime(seconds) {
-  const hr = String(Math.floor(seconds / 3600)).padStart(1, '0');
-  const min = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-  const sec = String(Math.floor(seconds % 60)).padStart(2, '0');
-  const cs = String(Math.floor((seconds % 1) * 100)).padStart(2, '0');
-  return `${hr}:${min}:${sec}.${cs}`;
+function formatTime(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(cs)}`;
 }
 
-function escapeAssText(text) {
-  return text.replace(/\{/g, '(').replace(/\}/g, ')');
+function pad(n) {
+  return n.toString().padStart(2, '0');
+}
+
+function assColor(hex) {
+  // Convert hex (e.g., '#FFFFFF' or '&H00FFFFFF') to ASS format '&HBBGGRR'
+  const normalized = hex.replace('&H', '').replace('#', '').padStart(8, '0').toUpperCase();
+  const bb = normalized.slice(6, 8);
+  const gg = normalized.slice(4, 6);
+  const rr = normalized.slice(2, 4);
+  return `&H00${bb}${gg}${rr}`;
 }
