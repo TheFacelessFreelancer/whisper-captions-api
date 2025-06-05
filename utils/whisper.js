@@ -23,15 +23,18 @@ const whisperTranscribe = async (audioPath) => {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('Whisper error response:', errorText);
     throw new Error(`Whisper API error: ${errorText}`);
   }
 
   const data = await response.json();
-  return data.segments.map((segment) => ({
-    start: segment.start.toFixed(3),
-    end: segment.end.toFixed(3),
-    text: segment.text.trim(),
-  }));
+
+  if (!data.segments) {
+    console.error('⚠️ Whisper returned unexpected response:', JSON.stringify(data, null, 2));
+    throw new Error('Whisper response did not include segments');
+  }
+
+  return data;
 };
 
 export default whisperTranscribe;
