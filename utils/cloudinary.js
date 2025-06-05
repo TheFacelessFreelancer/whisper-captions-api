@@ -1,24 +1,27 @@
-// utils/cloudinary.js
-
 import { v2 as cloudinary } from 'cloudinary';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
+  secure: true,
 });
 
-export async function uploadToCloudinary(filePath) {
+const uploadToCloudinary = async (filePath) => {
   try {
     const result = await cloudinary.uploader.upload(filePath, {
       resource_type: 'video',
-      folder: 'captions-app'
+      folder: 'captions-app',
     });
-    console.log('✅ Uploaded to Cloudinary:', result.secure_url);
     return result.secure_url;
-  } catch (error) {
-    console.error('❌ Cloudinary Upload Error:', error);
-    throw error;
+  } catch (err) {
+    throw new Error(`Cloudinary upload failed: ${err.message}`);
   }
-}
+};
+
+export default uploadToCloudinary;
