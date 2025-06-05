@@ -46,19 +46,27 @@ app.post('/subtitles', async (req, res) => {
       throw new Error('Invalid video URL. Must be an absolute URL.');
     }
 
+    console.time('⏱️ Total Time');
+
     console.log(`\n📥 Downloading video from: ${videoUrl}`);
+    console.time('⬇️ Download video');
     const response = await fetch(videoUrl);
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     await fs.ensureFile(videoPath);
     await fs.writeFile(videoPath, buffer);
-    console.log('✅ Video file saved:', videoPath);
+    console.timeEnd('⬇️ Download video');
 
     console.log('🔊 Extracting audio with FFmpeg...');
+    console.time('🎧 Extract audio');
     await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`);
+    console.timeEnd('🎧 Extract audio');
 
     console.log('📝 Transcribing audio with Whisper...');
+    console.time('🧠 Transcribe audio');
     const transcript = await whisperTranscribe(audioPath);
+    console.timeEnd('🧠 Transcribe audio');
+
     const events = transcript.segments.map(seg => ({
       start: seg.start,
       end: seg.end,
@@ -66,6 +74,7 @@ app.post('/subtitles', async (req, res) => {
     }));
 
     console.log('🎨 Building styled subtitle file...');
+    console.time('🧾 Generate subtitles');
     const assContent = buildAssSubtitle(events, {
       fontSize,
       fontColor,
@@ -79,15 +88,22 @@ app.post('/subtitles', async (req, res) => {
       boxColor
     });
     await fs.writeFile(subtitlePath, assContent);
+    console.timeEnd('🧾 Generate subtitles');
 
     console.log('🎬 Rendering final video with subtitles...');
+    console.time('📽️ Render final video');
     await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}'" -c:v libx264 -preset fast -crf 23 -c:a copy "${outputPath}" -y`);
+    console.timeEnd('📽️ Render final video');
 
     console.log('☁️ Uploading final video to Cloudinary...');
+    console.time('☁️ Upload to Cloudinary');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
+    console.timeEnd('☁️ Upload to Cloudinary');
 
+    console.timeEnd('⏱️ Total Time');
     console.log('✅ Done! Final video URL:', cloudinaryUrl);
     res.json({ success: true, url: cloudinaryUrl });
+
   } catch (err) {
     console.error('❌ FULL ERROR STACK:', err);
     res.status(500).json({ success: false, error: err.message });
