@@ -17,9 +17,9 @@ export function buildAssSubtitle(events, options) {
 
   // Map alignment name to \anX and TikTok-safe margins
   const alignmentMap = {
-    "top-safe":    { an: 8, marginV: 120 },
+    "top-safe":    { an: 8, marginV: 140 },
     "center":      { an: 5, marginV: 0 },
-    "bottom-safe": { an: 2, marginV: 240 },
+    "bottom-safe": { an: 2, marginV: 350 },
   };
 
   const alignmentSettings = alignmentMap[alignment] || alignmentMap["bottom-safe"];
