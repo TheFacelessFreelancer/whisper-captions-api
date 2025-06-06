@@ -7,24 +7,12 @@ export function buildAssSubtitle(events, options) {
     fontName,
     outlineColor,
     outlineWidth,
-    alignment,      // "top-safe" | "center" | "bottom-safe"
-    marginV,        // unused if customY is present
-    customY,        // optional: exact Y position in pixels
+    customY,        // vertical offset from center (positive = up)
+    customX,        // horizontal offset from center (positive = right)
     animation,
     box,
     boxColor,
   } = options;
-
-  // Map alignment name to \anX and TikTok-safe margins
-  const alignmentMap = {
-    "top-safe":    { an: 8, marginV: 140 },
-    "center":      { an: 5, marginV: 0 },
-    "bottom-safe": { an: 2, marginV: 350 },
-  };
-
-  const alignmentSettings = alignmentMap[alignment] || alignmentMap["bottom-safe"];
-  const anTag = alignmentSettings.an;
-  const marginOverride = customY !== undefined ? 0 : alignmentSettings.marginV;
 
   const header = `
 [Script Info]
@@ -35,7 +23,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,0,0,0,0,100,100,0,0,1,${outlineWidth},0,${anTag},30,30,${marginOverride},1
+Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,0,0,0,0,100,100,0,0,1,${outlineWidth},0,5,30,30,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -47,9 +35,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     const fade = animation ? `\\fade(0,255,255,200)` : '';
     const boxTag = box ? `\\bord10\\shad0\\3c${assColor(boxColor)}` : '';
-    const positionTag = customY !== undefined
-      ? `\\pos(540,${customY})`
-      : `\\an${anTag}`;
+
+    const actualX = 540 + (customX || 0);     // center x = 540
+    const actualY = 960 - (customY || 0);     // center y = 960
+    const positionTag = `\\pos(${actualX},${actualY})`;
 
     const dialogue = `Dialogue: 0,${formattedStart},${formattedEnd},Default,,0,0,0,,{${positionTag}${fade}${boxTag}}${text.replace(/(\r\n|\n|\r)/gm, '')}`;
     return dialogue;
