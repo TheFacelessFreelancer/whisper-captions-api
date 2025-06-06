@@ -73,4 +73,7 @@ function pad(n) {
 function assColor(hex) {
   const normalized = hex.replace('&H', '').replace('#', '').padStart(8, '0').toUpperCase();
   const bb = normalized.slice(6, 8);
-  const gg = normalized
+  const gg = normalized.slice(4, 6);
+  const rr = normalized.slice(2, 4);
+  return `&H00${bb}${gg}${rr}`;
+}
