@@ -31,6 +31,7 @@ app.post('/subtitles', async (req, res) => {
     alignment = 'bottom-safe',    // NEW
     marginV = 0,                  // fallback only
     customY,                      // NEW
+    customX,
     animation = true,
     box = true,
     boxColor = '&H00000000'
