@@ -28,9 +28,7 @@ app.post('/subtitles', async (req, res) => {
     fontName = 'Arial',
     outlineColor = '&H00000000',
     outlineWidth = 4,
-    alignment = 'bottom-safe',    // NEW
-    marginV = 0,                  // fallback only
-    customY,                      // NEW
+    customY,
     customX,
     animation = true,
     box = true,
@@ -77,9 +75,8 @@ app.post('/subtitles', async (req, res) => {
       fontName,
       outlineColor,
       outlineWidth,
-      alignment,     // ✅ PASSED TO BUILDER
-      marginV,       // ✅ fallback, unused if customY exists
-      customY,       // ✅ PASSED TO BUILDER
+      customY,
+      customX,
       animation,
       box,
       boxColor
