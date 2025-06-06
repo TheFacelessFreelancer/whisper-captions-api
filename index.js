@@ -28,8 +28,9 @@ app.post('/subtitles', async (req, res) => {
     fontName = 'Arial',
     outlineColor = '&H00000000',
     outlineWidth = 4,
-    alignment = 2,
-    marginV = 200,
+    alignment = 'bottom-safe',    // NEW
+    marginV = 0,                  // fallback only
+    customY,                      // NEW
     animation = true,
     box = true,
     boxColor = '&H00000000'
@@ -75,8 +76,9 @@ app.post('/subtitles', async (req, res) => {
       fontName,
       outlineColor,
       outlineWidth,
-      alignment,
-      marginV,
+      alignment,     // ✅ PASSED TO BUILDER
+      marginV,       // ✅ fallback, unused if customY exists
+      customY,       // ✅ PASSED TO BUILDER
       animation,
       box,
       boxColor
@@ -85,10 +87,10 @@ app.post('/subtitles', async (req, res) => {
     console.timeEnd('🧾 Generate subtitles');
 
     console.time('🎬 Render video');
-    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}',scale=720:-2" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}" -y`);
+    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}',scale=720:-2" -c:v libx264 -preset fast -crf 23 -c:a copy "${outputPath}" -y`);
     console.timeEnd('🎬 Render video');
 
-    console.log('☁️ Uploading final video to Cloudinary...');
+    console.log('☁ Uploading final video to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
     console.log('✅ Done! Final video URL:', cloudinaryUrl);
