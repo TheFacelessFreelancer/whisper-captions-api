@@ -44,8 +44,8 @@ app.post('/subtitles', async (req, res) => {
   const subtitlePath = `uploads/${id}.ass`;
   const outputPath = `uploads/output-${id}.mp4`;
 
-  console.log('📥 Step 1: Validating video URL...');
   try {
+    console.log('📦 Raw videoUrl from Make:', videoUrl); // <<== Injected log here
     if (!videoUrl || !videoUrl.startsWith('http')) {
       console.error('❌ Invalid video URL:', videoUrl);
       throw new Error('Invalid video URL. Must be an absolute URL.');
