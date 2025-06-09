@@ -1,3 +1,37 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+export const extractAudio = async (videoPath, audioPath) => {
+  console.log('🔊 Extracting audio with FFmpeg...');
+  await execAsync([
+    'ffmpeg',
+    '-i', videoPath,
+    '-vn',
+    '-acodec', 'libmp3lame',
+    '-ar', '44100',
+    '-b:a', '192k',
+    audioPath,
+    '-y'
+  ], { shell: false });
+};
+
+export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPath) => {
+  console.log('🎬 Rendering final video with subtitles...');
+  await execAsync([
+    'ffmpeg',
+    '-i', videoPath,
+    '-vf', `ass='${subtitlePath}'`,
+    '-c:v', 'libx264',
+    '-preset', 'fast',
+    '-crf', '23',
+    '-c:a', 'copy',
+    outputPath,
+    '-y'
+  ], { shell: false });
+};
+
 export function buildAssSubtitle(events, options) {
   const {
     fontName = 'Arial',
@@ -8,7 +42,7 @@ export function buildAssSubtitle(events, options) {
     lineSpacing = 0,
     shadow = 0,
     box = true,
-    boxColor = '&H00000000',
+    boxColor = '&H00FFFFFF',  // Changed from &HCCFFFFFF to RGBA format
     boxPadding = 10,
     customX,
     customY,
