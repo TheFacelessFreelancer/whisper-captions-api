@@ -38,4 +38,32 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const boxStyle = box ? `\\bord${boxPadding}\\shad0\\3c${assColor(boxColor)}` : '';
     const position = `\\pos(${customX},${customY})`;
 
-    return `Dialogue: 0,${sta
+    return `Dialogue: 0,${startTime},${endTime},Default,,0,0,0,,{${animTag}${boxStyle}${position}}${sanitizeText(text)}`;
+  });
+
+  return header + formattedEvents.join('\n');
+}
+
+function formatTime(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(cs)}`;
+}
+
+function pad(n) {
+  return n.toString().padStart(2, '0');
+}
+
+function assColor(hexOrAss) {
+  const normalized = hexOrAss.replace('&H', '').replace('#', '').padStart(8, '0').toUpperCase();
+  const bb = normalized.slice(6, 8);
+  const gg = normalized.slice(4, 6);
+  const rr = normalized.slice(2, 4);
+  return `&H00${bb}${gg}${rr}`;
+}
+
+function sanitizeText(text) {
+  return text.replace(/(\r\n|\n|\r)/gm, '').replace(/{/g, '\\{').replace(/}/g, '\\}');
+}
