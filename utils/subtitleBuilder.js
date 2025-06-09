@@ -1,116 +1,75 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
-
-export const extractAudio = async (videoPath, audioPath) => {
-  console.log('🔊 Extracting audio with FFmpeg...');
-  await execAsync([
-    'ffmpeg',
-    '-i', videoPath,
-    '-vn',
-    '-acodec', 'libmp3lame',
-    '-ar', '44100',
-    '-b:a', '192k',
-    audioPath,
-    '-y'
-  ], { shell: false });
-};
-
-export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPath) => {
-  console.log('🎬 Rendering final video with subtitles...');
-  await execAsync([
-    'ffmpeg',
-    '-i', videoPath,
-    '-vf', `ass='${subtitlePath}'`,
-    '-c:v', 'libx264',
-    '-preset', 'fast',
-    '-crf', '23',
-    '-c:a', 'copy',
-    outputPath,
-    '-y'
-  ], { shell: false });
-};
-
 export function buildAssSubtitle(events, options) {
   const {
-    fontName = 'Arial',
-    fontSize = 42,
-    fontColor = '&H00FFFFFF',
-    outlineColor = '&H00000000',
-    outlineWidth = 2,
+    fontSize,
+    fontColor,
+    fontName,
+    outlineColor,
+    outlineWidth,
+    alignment = 2,
+    marginV = 100,
     lineSpacing = 0,
     shadow = 0,
-    box = true,
-    boxColor = '&H00FFFFFF',  // Changed from &HCCFFFFFF to RGBA format
-    boxPadding = 10,
-    customX,
-    customY,
     animation = 'fade',
-    preset
+    box = true,
+    boxColor = '&H00000000',
+    boxPadding = 10,
   } = options;
 
-  const format = [
-    'Layer', 'Start', 'End', 'Style', 'Name',
-    'MarginL', 'MarginR', 'MarginV', 'Effect', 'Text'
-  ];
-
-  // TikTok-safe preset positions
-  let x = 720; // center X
-  let y = 960; // center Y
-  if (preset === 'top-safe') y = 960 - 650;
-  else if (preset === 'bottom-safe') y = 960 + 350;
-  else if (preset === 'center') y = 960;
-
-  // override with custom coordinates if provided
-  if (typeof customX === 'number') x += customX;
-  if (typeof customY === 'number') y -= customY;
-
-  const posTag = `\\pos(${x},${y})`;
-  const boxTag = box ? `\\bord${boxPadding}\\shad0\\1c${boxColor}` : '';
-
-  const styles = `
+  const header = `
 [Script Info]
 ScriptType: v4.00+
-Collisions: Normal
-PlayResX: 1440
+PlayResX: 1080
 PlayResY: 1920
+ScaledBorderAndShadow: yes
 
 [V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, 
-        ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, 
-        Encoding
-Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,-1,0,0,0,
-        100,100,${lineSpacing},0,1,${outlineWidth},${shadow},5,10,10,10,1
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,${fontName},${fontSize},${fontColor},${outlineColor},&H00000000,0,0,0,0,100,100,${lineSpacing},0,1,${outlineWidth},${shadow},${alignment},30,30,${marginV},1
 
 [Events]
-Format: ${format.join(', ')}
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  const lines = events.map((e, i) => {
-    const start = secondsToAssTime(e.start);
-    const end = secondsToAssTime(e.end);
-    let text = e.text;
+  const formattedEvents = events.map(({ start, end, text }) => {
+    const formattedStart = formatTime(start);
+    const formattedEnd = formatTime(end);
 
-    // line-by-line animation (optional word-level granularity)
-    if (animation === 'word') {
-      text = text.split(' ').map(word => `{\\fad(150,0)}${word}`).join(' ');
-    } else if (animation === 'typewriter') {
-      text = text.split('').map(char => `{\\k5}${char}`).join('');
-    } else if (animation === 'bounce') {
-      text = `{\\move(${x},${y},${x},${y - 20})}${text}`;
+    // Animation override
+    let animTag = '';
+    if (animation === 'fade') {
+      animTag = '\\fad(200,200)';
     }
 
-    return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${posTag}${boxTag}}${text}`;
+    // Box styling override
+    const boxStyle = box ? `\\bord${boxPadding}\\shad0\\3c${assColor(boxColor)}` : '';
+
+    const line = `Dialogue: 0,${formattedStart},${formattedEnd},Default,,0,0,0,,{\\an${alignment}${animTag}${boxStyle}}${sanitizeText(text)}`;
+    return line;
   });
 
-  return styles + lines.join('\n');
+  return header + formattedEvents.join('\n');
 }
 
-function secondsToAssTime(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(1, '0');
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-  const s = String(Math.floor(sec % 60)).padStart(2, '0');
-  const cs = String(Math.floor((sec % 1) * 100)).padStart(2, '0');
-  return `${h}:${m}:${s}.${cs}`;
+function formatTime(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const cs = Math.floor((seconds % 1) * 100);
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(cs)}`;
+}
+
+function pad(n) {
+  return n.toString().padStart(2, '0');
+}
+
+function assColor(hexOrAss) {
+  const normalized = hexOrAss.replace('&H', '').replace('#', '').padStart(8, '0').toUpperCase();
+  const bb = normalized.slice(6, 8);
+  const gg = normalized.slice(4, 6);
+  const rr = normalized.slice(2, 4);
+  return `&H00${bb}${gg}${rr}`;
+}
+
+function sanitizeText(text) {
+  return text.replace(/(\r\n|\n|\r)/gm, '').replace(/{/g, '\\{').replace(/}/g, '\\}');
 }
