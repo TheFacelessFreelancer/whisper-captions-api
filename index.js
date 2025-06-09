@@ -20,7 +20,7 @@ const port = process.env.PORT || 10000;
 app.use(bodyParser.json({ limit: '100mb' }));
 
 app.post('/subtitles', async (req, res) => {
-  console.log("📨 FULL REQUEST BODY:", req.body); // NEW: logs full incoming payload
+  console.log("📨 FULL REQUEST BODY:", req.body);
 
   const {
     videoUrl,
@@ -31,14 +31,22 @@ app.post('/subtitles', async (req, res) => {
     outlineWidth = 4,
     lineSpacing = 0,
     shadow = 0,
-    animation = true,
+    animation = 'fade',
     box = true,
-    boxColor = '&H00000000',
+    boxColor = '&H00FFFFFF',
     boxPadding = 10,
     customX,
     customY,
     preset
   } = req.body;
+
+  // Input validation
+  if (fontSize < 24 || fontSize > 80) {
+    throw new Error('Font size must be between 24 and 80');
+  }
+  if (!['fade', 'word', 'typewriter', 'bounce', 'none'].includes(animation)) {
+    throw new Error('Invalid animation type');
+  }
 
   const id = Date.now();
   const videoPath = `uploads/input-${id}.mp4`;
@@ -63,7 +71,16 @@ app.post('/subtitles', async (req, res) => {
     console.log('✅ Step 2 complete: Video file saved:', videoPath);
 
     console.time('🎧 Step 3: Extract audio');
-    await execAsync(`ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`);
+    await execAsync([
+      'ffmpeg',
+      '-i', videoPath,
+      '-vn',
+      '-acodec', 'libmp3lame',
+      '-ar', '44100',
+      '-b:a', '192k',
+      audioPath,
+      '-y'
+    ], { shell: false });
     console.timeEnd('🎧 Step 3: Extract audio');
 
     console.time('🧠 Step 4: Transcribe audio');
@@ -97,12 +114,30 @@ app.post('/subtitles', async (req, res) => {
     console.timeEnd('🧾 Step 5: Generate subtitles');
 
     console.time('🎬 Step 6: Render video');
-    await execAsync(`ffmpeg -i "${videoPath}" -vf "ass='${subtitlePath}',scale=720:-2" -c:v libx264 -preset fast -crf 23 -c:a copy "${outputPath}" -y`);
+    await execAsync([
+      'ffmpeg',
+      '-i', videoPath,
+      '-vf', `ass='${subtitlePath}',scale=720:-2`,
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '23',
+      '-c:a', 'copy',
+      outputPath,
+      '-y'
+    ], { shell: false });
     console.timeEnd('🎬 Step 6: Render video');
 
     console.log('☁ Step 7: Uploading final video to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
     console.log('✅ Step 7 complete: Final video URL:', cloudinaryUrl);
+
+    // Cleanup temp files
+    await Promise.allSettled([
+      fs.unlink(videoPath).catch(() => {}),
+      fs.unlink(audioPath).catch(() => {}),
+      fs.unlink(subtitlePath).catch(() => {}),
+      fs.unlink(outputPath).catch(() => {})
+    ]);
 
     res.json({ success: true, url: cloudinaryUrl });
   } catch (err) {
