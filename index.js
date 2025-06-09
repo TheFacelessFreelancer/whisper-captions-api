@@ -10,10 +10,8 @@ import { fileURLToPath } from 'url';
 import { buildAssSubtitle } from './utils/subtitleBuilder.js';
 import whisperTranscribe from './utils/whisper.js';
 import uploadToCloudinary from './utils/cloudinary.js';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { extractAudio, renderVideoWithSubtitles } from './utils/ffmpeg.js';
 
-const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -104,16 +102,13 @@ app.post('/subtitles', async (req, res) => {
     await fs.ensureFile(videoPath);
     await fs.writeFile(videoPath, buffer);
 
-    console.time('🎧 Extract audio');
-    await execAsync([
-      'ffmpeg', '-i', videoPath, '-vn', '-acodec', 'libmp3lame',
-      '-ar', '44100', '-b:a', '192k', audioPath, '-y'
-    ], { shell: false });
-    console.timeEnd('🎧 Extract audio');
+    console.time('🎧 Step 3: Extract audio');
+    await extractAudio(videoPath, audioPath);
+    console.timeEnd('🎧 Step 3: Extract audio');
 
-    console.time('🧠 Transcribe');
+    console.time('🧠 Step 4: Transcribe');
     const transcript = await whisperTranscribe(audioPath);
-    console.timeEnd('🧠 Transcribe');
+    console.timeEnd('🧠 Step 4: Transcribe');
 
     const events = transcript.segments.map(seg => ({
       start: seg.start,
@@ -121,7 +116,7 @@ app.post('/subtitles', async (req, res) => {
       text: seg.text
     }));
 
-    console.time('🧾 Generate subtitles');
+    console.time('🧾 Step 5: Generate subtitles');
     const assContent = buildAssSubtitle(events, {
       fontSize,
       fontColor,
@@ -138,23 +133,13 @@ app.post('/subtitles', async (req, res) => {
       customY: resolvedY
     });
     await fs.writeFile(subtitlePath, assContent);
-    console.timeEnd('🧾 Generate subtitles');
+    console.timeEnd('🧾 Step 5: Generate subtitles');
 
     const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
 
-    console.time('🎬 Render video');
-    await execAsync([
-      'ffmpeg',
-      '-i', videoPath,
-      '-vf', `ass='${absoluteSubtitlePath}',scale=720:-2`,
-      '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '23',
-      '-c:a', 'copy',
-      outputPath,
-      '-y'
-    ], { shell: false });
-    console.timeEnd('🎬 Render video');
+    console.time('🎬 Step 6: Render video');
+    await renderVideoWithSubtitles(videoPath, absoluteSubtitlePath, outputPath);
+    console.timeEnd('🎬 Step 6: Render video');
 
     console.log('☁ Uploading to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
