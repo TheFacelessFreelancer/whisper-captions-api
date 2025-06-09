@@ -67,39 +67,41 @@ app.post('/subtitles', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid animation type' });
   }
 
-  // ✅ POSITIONING LOGIC: preset always overrides custom
-  let resolvedX = 540;
-  let resolvedY = 960;
+  // ✅ CENTER-BASED COORDINATE LOGIC
+  let resolvedX = 540; // center
+  let resolvedY = 960; // center
 
   if (preset) {
+    let yOffset = 0;
+
     switch (preset) {
       case 'top-safe':
-        resolvedY = 1710;
+        yOffset = +750; // above center
         break;
       case 'bottom-safe':
-        resolvedY = 610;
+        yOffset = -350; // below center
         break;
       case 'center':
-        resolvedY = 960;
+        yOffset = 0;
         break;
       default:
         console.warn('⚠ Unknown preset:', preset);
     }
+
+    resolvedY = 960 - yOffset;
   } else {
     resolvedX = typeof customX === 'number' ? customX : 540;
     resolvedY = typeof customY === 'number' ? customY : 960;
   }
 
-  // ✅ Respond early with jobId
   const jobId = `${Date.now()}`;
   res.json({
     success: true,
     status: "processing",
     jobId,
-    message: "Rendering has started in background. Poll /results/:jobId to check status."
+    message: "Rendering started in background. Poll /results/:jobId for status."
   });
 
-  // ✅ Start background processing
   const videoPath = `uploads/input-${jobId}.mp4`;
   const audioPath = `uploads/input-${jobId}.mp3`;
   const subtitlePath = `uploads/${jobId}.ass`;
@@ -108,7 +110,7 @@ app.post('/subtitles', async (req, res) => {
 
   try {
     setTimeout(async () => {
-      console.log(`🚀 [${jobId}] Starting background render...`);
+      console.log(`🚀 [${jobId}] Starting render...`);
 
       const response = await fetch(videoUrl);
       const arrayBuffer = await response.arrayBuffer();
@@ -155,7 +157,7 @@ app.post('/subtitles', async (req, res) => {
         completedAt: Date.now()
       }));
 
-      console.log(`✅ [${jobId}] Finished rendering and saved result.`);
+      console.log(`✅ [${jobId}] Render complete:`, cloudinaryUrl);
 
       await Promise.allSettled([
         fs.unlink(videoPath),
@@ -163,10 +165,10 @@ app.post('/subtitles', async (req, res) => {
         fs.unlink(subtitlePath),
         fs.unlink(outputPath)
       ]);
-    }, 0); // async background
+    }, 0);
 
   } catch (err) {
-    console.error(`❌ [${jobId}] Render failed:`, err);
+    console.error(`❌ [${jobId}] Error:`, err);
     await fs.writeFile(resultPath, JSON.stringify({
       success: false,
       error: err.message
@@ -174,7 +176,6 @@ app.post('/subtitles', async (req, res) => {
   }
 });
 
-// ✅ Polling endpoint: GET /results/:jobId
 app.get('/results/:jobId', async (req, res) => {
   const resultPath = `uploads/result-${req.params.jobId}.json`;
   if (await fs.pathExists(resultPath)) {
