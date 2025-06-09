@@ -67,9 +67,9 @@ app.post('/subtitles', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid animation type' });
   }
 
-  // ✅ POSITIONING LOGIC (preset overrides custom)
-  let resolvedX = 540; // default center
-  let resolvedY = 960; // default center
+  // ✅ POSITIONING LOGIC: preset always overrides custom
+  let resolvedX = 540;
+  let resolvedY = 960;
 
   if (preset) {
     switch (preset) {
@@ -90,74 +90,98 @@ app.post('/subtitles', async (req, res) => {
     resolvedY = typeof customY === 'number' ? customY : 960;
   }
 
-  const id = Date.now();
-  const videoPath = `uploads/input-${id}.mp4`;
-  const audioPath = `uploads/input-${id}.mp3`;
-  const subtitlePath = `uploads/${id}.ass`;
-  const outputPath = `uploads/output-${id}.mp4`;
+  // ✅ Respond early with jobId
+  const jobId = `${Date.now()}`;
+  res.json({
+    success: true,
+    status: "processing",
+    jobId,
+    message: "Rendering has started in background. Poll /results/:jobId to check status."
+  });
+
+  // ✅ Start background processing
+  const videoPath = `uploads/input-${jobId}.mp4`;
+  const audioPath = `uploads/input-${jobId}.mp3`;
+  const subtitlePath = `uploads/${jobId}.ass`;
+  const outputPath = `uploads/output-${jobId}.mp4`;
+  const resultPath = `uploads/result-${jobId}.json`;
 
   try {
-    console.log('📥 Downloading video:', videoUrl);
-    const response = await fetch(videoUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    await fs.ensureFile(videoPath);
-    await fs.writeFile(videoPath, buffer);
+    setTimeout(async () => {
+      console.log(`🚀 [${jobId}] Starting background render...`);
 
-    console.time('🎧 Step 3: Extract audio');
-    await extractAudio(videoPath, audioPath);
-    console.timeEnd('🎧 Step 3: Extract audio');
+      const response = await fetch(videoUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      await fs.ensureFile(videoPath);
+      await fs.writeFile(videoPath, buffer);
 
-    console.time('🧠 Step 4: Transcribe');
-    const transcript = await whisperTranscribe(audioPath);
-    console.timeEnd('🧠 Step 4: Transcribe');
+      await extractAudio(videoPath, audioPath);
 
-    const events = transcript.segments.map(seg => ({
-      start: seg.start,
-      end: seg.end,
-      text: seg.text
-    }));
+      const transcript = await whisperTranscribe(audioPath);
 
-    console.time('🧾 Step 5: Generate subtitles');
-    const assContent = buildAssSubtitle(events, {
-      fontSize,
-      fontColor,
-      fontName,
-      outlineColor,
-      outlineWidth,
-      lineSpacing,
-      shadow,
-      animation,
-      box,
-      boxColor,
-      boxPadding,
-      customX: resolvedX,
-      customY: resolvedY
-    });
-    await fs.writeFile(subtitlePath, assContent);
-    console.timeEnd('🧾 Step 5: Generate subtitles');
+      const events = transcript.segments.map(seg => ({
+        start: seg.start,
+        end: seg.end,
+        text: seg.text
+      }));
 
-    const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
+      const assContent = buildAssSubtitle(events, {
+        fontSize,
+        fontColor,
+        fontName,
+        outlineColor,
+        outlineWidth,
+        lineSpacing,
+        shadow,
+        animation,
+        box,
+        boxColor,
+        boxPadding,
+        customX: resolvedX,
+        customY: resolvedY
+      });
 
-    console.time('🎬 Step 6: Render video');
-    await renderVideoWithSubtitles(videoPath, absoluteSubtitlePath, outputPath);
-    console.timeEnd('🎬 Step 6: Render video');
+      await fs.writeFile(subtitlePath, assContent);
 
-    console.log('☁ Uploading to Cloudinary...');
-    const cloudinaryUrl = await uploadToCloudinary(outputPath);
+      const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
+      await renderVideoWithSubtitles(videoPath, absoluteSubtitlePath, outputPath);
 
-    await Promise.allSettled([
-      fs.unlink(videoPath),
-      fs.unlink(audioPath),
-      fs.unlink(subtitlePath),
-      fs.unlink(outputPath)
-    ]);
+      const cloudinaryUrl = await uploadToCloudinary(outputPath);
 
-    res.json({ success: true, url: cloudinaryUrl });
+      await fs.writeFile(resultPath, JSON.stringify({
+        success: true,
+        url: cloudinaryUrl,
+        completedAt: Date.now()
+      }));
+
+      console.log(`✅ [${jobId}] Finished rendering and saved result.`);
+
+      await Promise.allSettled([
+        fs.unlink(videoPath),
+        fs.unlink(audioPath),
+        fs.unlink(subtitlePath),
+        fs.unlink(outputPath)
+      ]);
+    }, 0); // async background
 
   } catch (err) {
-    console.error('❌ ERROR:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error(`❌ [${jobId}] Render failed:`, err);
+    await fs.writeFile(resultPath, JSON.stringify({
+      success: false,
+      error: err.message
+    }));
+  }
+});
+
+// ✅ Polling endpoint: GET /results/:jobId
+app.get('/results/:jobId', async (req, res) => {
+  const resultPath = `uploads/result-${req.params.jobId}.json`;
+  if (await fs.pathExists(resultPath)) {
+    const data = await fs.readJson(resultPath);
+    res.json(data);
+  } else {
+    res.status(202).json({ success: false, status: "processing" });
   }
 });
 
