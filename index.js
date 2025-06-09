@@ -32,17 +32,15 @@ app.post('/subtitles', async (req, res) => {
     fontName = 'Arial',
     outlineColor = '&H00000000',
     outlineWidth = 4,
-    alignment = 2,
-    marginV = 100,
     lineSpacing = 0,
     shadow = 0,
     animation = 'fade',
     box = true,
     boxColor = '&H00FFFFFF',
     boxPadding = 10,
+    preset,
     customX,
-    customY,
-    preset
+    customY
   } = req.body;
 
   const allowedFonts = [
@@ -59,7 +57,7 @@ app.post('/subtitles', async (req, res) => {
   if (!allowedFonts.includes(fontName)) {
     return res.status(400).json({
       success: false,
-      error: `Unsupported font: ${fontName}. Please use one of: ${allowedFonts.join(', ')}`
+      error: `Unsupported font: ${fontName}. Use: ${allowedFonts.join(', ')}`
     });
   }
 
@@ -71,6 +69,27 @@ app.post('/subtitles', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid animation type' });
   }
 
+  // Final X/Y coordinates based on preset (only if custom values are NOT provided)
+  let resolvedX = customX ?? 540;
+  let resolvedY = customY;
+
+  if (preset && customY === undefined) {
+    switch (preset) {
+      case 'top-safe':
+        resolvedY = 1710;
+        break;
+      case 'bottom-safe':
+        resolvedY = 610;
+        break;
+      case 'center':
+        resolvedY = 960;
+        break;
+      default:
+        console.warn('⚠ Unknown preset:', preset);
+        resolvedY = 960;
+    }
+  }
+
   const id = Date.now();
   const videoPath = `uploads/input-${id}.mp4`;
   const audioPath = `uploads/input-${id}.mp3`;
@@ -78,40 +97,23 @@ app.post('/subtitles', async (req, res) => {
   const outputPath = `uploads/output-${id}.mp4`;
 
   try {
-    console.log('📦 Raw videoUrl from Make:', videoUrl);
-    if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.startsWith('http')) {
-      console.error('❌ Invalid video URL:', {
-        receivedValue: videoUrl,
-        receivedType: typeof videoUrl
-      });
-      throw new Error('Invalid video URL. Must be an absolute URL starting with http/https');
-    }
-
-    console.log('✅ Step 1 complete: Video URL is valid');
-    console.log(`📥 Step 2: Downloading video from: ${videoUrl}`);
+    console.log('📥 Downloading video:', videoUrl);
     const response = await fetch(videoUrl);
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     await fs.ensureFile(videoPath);
     await fs.writeFile(videoPath, buffer);
-    console.log('✅ Step 2 complete: Video file saved:', videoPath);
 
-    console.time('🎧 Step 3: Extract audio');
+    console.time('🎧 Extract audio');
     await execAsync([
-      'ffmpeg',
-      '-i', videoPath,
-      '-vn',
-      '-acodec', 'libmp3lame',
-      '-ar', '44100',
-      '-b:a', '192k',
-      audioPath,
-      '-y'
+      'ffmpeg', '-i', videoPath, '-vn', '-acodec', 'libmp3lame',
+      '-ar', '44100', '-b:a', '192k', audioPath, '-y'
     ], { shell: false });
-    console.timeEnd('🎧 Step 3: Extract audio');
+    console.timeEnd('🎧 Extract audio');
 
-    console.time('🧠 Step 4: Transcribe audio');
+    console.time('🧠 Transcribe');
     const transcript = await whisperTranscribe(audioPath);
-    console.timeEnd('🧠 Step 4: Transcribe audio');
+    console.timeEnd('🧠 Transcribe');
 
     const events = transcript.segments.map(seg => ({
       start: seg.start,
@@ -119,31 +121,28 @@ app.post('/subtitles', async (req, res) => {
       text: seg.text
     }));
 
-    console.time('🧾 Step 5: Generate subtitles');
+    console.time('🧾 Generate subtitles');
     const assContent = buildAssSubtitle(events, {
       fontSize,
       fontColor,
       fontName,
       outlineColor,
       outlineWidth,
-      alignment,
-      marginV,
       lineSpacing,
       shadow,
-      customX,
-      customY,
       animation,
       box,
       boxColor,
       boxPadding,
-      preset
+      customX: resolvedX,
+      customY: resolvedY
     });
     await fs.writeFile(subtitlePath, assContent);
-    console.timeEnd('🧾 Step 5: Generate subtitles');
+    console.timeEnd('🧾 Generate subtitles');
 
     const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
 
-    console.time('🎬 Step 6: Render video');
+    console.time('🎬 Render video');
     await execAsync([
       'ffmpeg',
       '-i', videoPath,
@@ -155,28 +154,26 @@ app.post('/subtitles', async (req, res) => {
       outputPath,
       '-y'
     ], { shell: false });
-    console.timeEnd('🎬 Step 6: Render video');
+    console.timeEnd('🎬 Render video');
 
-    console.log('☁ Step 7: Uploading final video to Cloudinary...');
+    console.log('☁ Uploading to Cloudinary...');
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
-    console.log('✅ Step 7 complete: Final video URL:', cloudinaryUrl);
 
-    // Cleanup temp files
     await Promise.allSettled([
-      fs.unlink(videoPath).catch(() => {}),
-      fs.unlink(audioPath).catch(() => {}),
-      fs.unlink(subtitlePath).catch(() => {}),
-      fs.unlink(outputPath).catch(() => {})
+      fs.unlink(videoPath),
+      fs.unlink(audioPath),
+      fs.unlink(subtitlePath),
+      fs.unlink(outputPath)
     ]);
 
     res.json({ success: true, url: cloudinaryUrl });
 
   } catch (err) {
-    console.error('❌ FULL ERROR STACK:', err);
+    console.error('❌ ERROR:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server is listening on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
