@@ -99,3 +99,63 @@ app.post('/subtitles', async (req, res) => {
     }));
 
     console.time('🧾 Step 5: Generate subtitles');
+    const assContent = buildAssSubtitle(events, {
+      fontSize,
+      fontColor,
+      fontName,
+      outlineColor,
+      outlineWidth,
+      alignment,
+      marginV,
+      lineSpacing,
+      shadow,
+      customX,
+      customY,
+      animation,
+      box,
+      boxColor,
+      boxPadding,
+      preset
+    });
+    await fs.writeFile(subtitlePath, assContent);
+    console.timeEnd('🧾 Step 5: Generate subtitles');
+
+    const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
+
+    console.time('🎬 Step 6: Render video');
+    await execAsync([
+      'ffmpeg',
+      '-i', videoPath,
+      '-vf', `ass='${absoluteSubtitlePath}',scale=720:-2`,
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '23',
+      '-c:a', 'copy',
+      outputPath,
+      '-y'
+    ], { shell: false });
+    console.timeEnd('🎬 Step 6: Render video');
+
+    console.log('☁ Step 7: Uploading final video to Cloudinary...');
+    const cloudinaryUrl = await uploadToCloudinary(outputPath);
+    console.log('✅ Step 7 complete: Final video URL:', cloudinaryUrl);
+
+    // Cleanup
+    await Promise.allSettled([
+      fs.unlink(videoPath).catch(() => {}),
+      fs.unlink(audioPath).catch(() => {}),
+      fs.unlink(subtitlePath).catch(() => {}),
+      fs.unlink(outputPath).catch(() => {})
+    ]);
+
+    res.json({ success: true, url: cloudinaryUrl });
+
+  } catch (err) {
+    console.error('❌ FULL ERROR STACK:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`🚀 Server is listening on port ${port}`);
+});
