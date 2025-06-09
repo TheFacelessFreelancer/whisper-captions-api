@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import express from 'express'; 
+import express from 'express';
 import bodyParser from 'body-parser';
 import fs from 'fs-extra';
 import path from 'path';
@@ -45,10 +45,28 @@ app.post('/subtitles', async (req, res) => {
     preset
   } = req.body;
 
-  // Input validation
+  const allowedFonts = [
+    'DejaVu Sans',
+    'Arial',
+    'Impact',
+    'Verdana',
+    'Liberation Sans',
+    'Courier New',
+    'Times New Roman',
+    'FreeSans'
+  ];
+
+  if (!allowedFonts.includes(fontName)) {
+    return res.status(400).json({
+      success: false,
+      error: `Unsupported font: ${fontName}. Please use one of: ${allowedFonts.join(', ')}`
+    });
+  }
+
   if (fontSize < 24 || fontSize > 80) {
     return res.status(400).json({ success: false, error: 'Font size must be between 24 and 80' });
   }
+
   if (!['fade', 'none'].includes(animation)) {
     return res.status(400).json({ success: false, error: 'Invalid animation type' });
   }
@@ -62,7 +80,10 @@ app.post('/subtitles', async (req, res) => {
   try {
     console.log('📦 Raw videoUrl from Make:', videoUrl);
     if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.startsWith('http')) {
-      console.error('❌ Invalid video URL:', { receivedValue: videoUrl, receivedType: typeof videoUrl });
+      console.error('❌ Invalid video URL:', {
+        receivedValue: videoUrl,
+        receivedType: typeof videoUrl
+      });
       throw new Error('Invalid video URL. Must be an absolute URL starting with http/https');
     }
 
@@ -140,7 +161,7 @@ app.post('/subtitles', async (req, res) => {
     const cloudinaryUrl = await uploadToCloudinary(outputPath);
     console.log('✅ Step 7 complete: Final video URL:', cloudinaryUrl);
 
-    // Cleanup
+    // Cleanup temp files
     await Promise.allSettled([
       fs.unlink(videoPath).catch(() => {}),
       fs.unlink(audioPath).catch(() => {}),
