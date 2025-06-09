@@ -54,15 +54,17 @@ app.post('/subtitles', async (req, res) => {
   const subtitlePath = `uploads/${id}.ass`;
   const outputPath = `uploads/output-${id}.mp4`;
 
-  try {
+try {
     console.log('📦 Raw videoUrl from Make:', videoUrl);
-    if (!videoUrl || !videoUrl.startsWith('http')) {
-      console.error('❌ Invalid video URL:', videoUrl);
-      throw new Error('Invalid video URL. Must be an absolute URL.');
+    if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.startsWith('http')) { 
+        console.error('❌ Invalid video URL:', {
+            receivedValue: videoUrl,  
+            receivedType: typeof videoUrl
+        });
+        throw new Error('Invalid video URL. Must be an absolute URL starting with http/https');
     }
     console.log('✅ Step 1 complete: Video URL is valid');
-
-    console.log(`📥 Step 2: Downloading video from: ${videoUrl}`);
+    console.log(`📥 Step 2: Downloading video from: ${videoUrl}`);  
     const response = await fetch(videoUrl);
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
