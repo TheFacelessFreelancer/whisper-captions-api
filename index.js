@@ -74,8 +74,8 @@ app.post('/subtitles', async (req, res) => {
 
       res.json({
         success: true,
+        jobId: jobId,
         url: `https://res.cloudinary.com/YOUR_CLOUD_NAME/video/upload/v123456789/${jobId}.mp4`,
-        jobId,
         status: 'ready'
       });
     });
