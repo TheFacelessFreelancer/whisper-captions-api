@@ -39,4 +39,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const content = styles + dialogue;
 
   const subtitlesDir = path.join('subtitles');
-  const filePath = path.join(subtitle
+  const filePath = path.join(subtitlesDir, `${jobId}.ass`);
+
+  try {
+    await fs.promises.mkdir(subtitlesDir, { recursive: true });
+    await fs.promises.writeFile(filePath, content);
+    console.log(`✅ Subtitle file written: ${filePath}`);
+    return filePath;
+  } catch (err) {
+    console.error("❌ Failed to write subtitle file:", err);
+    throw err;
+  }
+}
