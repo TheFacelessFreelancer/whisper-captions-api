@@ -59,6 +59,9 @@ app.post('/subtitles', async (req, res) => {
 
     console.time("🎧 Extract audio");
 
+    // ✅ Ensure the output directory exists
+    await fs.promises.mkdir('output', { recursive: true });
+
     const command = `ffmpeg -y -i "${videoUrl}" -vf "subtitles=${subtitleFilePath}" -c:a copy "${videoOutputPath}"`;
 
     exec(command, (error, stdout, stderr) => {
