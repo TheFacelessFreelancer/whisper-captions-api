@@ -1,6 +1,6 @@
 // utils/colors.js
 
-function hexToASS(hex) {
+export function hexToASS(hex) {
   if (!hex) return "&H00000000";
   const match = hex.match(/^#?([a-f\d]{6})$/i);
   if (!match) return "&H00000000";
@@ -10,5 +10,3 @@ function hexToASS(hex) {
   const b = rgb.slice(4, 6);
   return `&H00${b}${g}${r}`;
 }
-
-module.exports = { hexToASS };
