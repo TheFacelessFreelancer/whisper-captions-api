@@ -12,54 +12,36 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json({ limit: '50mb' }));
 
-const jobsDir = path.join('jobs');
-fs.promises.mkdir(jobsDir, { recursive: true }); // ensure jobs folder exists
-
-// ✅ CREATE CAPTIONS – start job & return jobId immediately
 app.post('/subtitles', async (req, res) => {
   const jobId = uuidv4();
 
-  // Immediately return the jobId
+  // ✅ Return the jobId immediately
   res.json({ jobId });
 
-  // Start rendering in background
-  processRenderJob(req.body, jobId);
+  // 🔁 Continue processing in the background
+  handleJob(req.body, jobId);
 });
 
-// ✅ STATUS TRACKER – poll for job results
-app.get('/results/:jobId', async (req, res) => {
-  const jobId = req.params.jobId;
-  const jobPath = path.join(jobsDir, `${jobId}.json`);
-
+async function handleJob(body, jobId) {
   try {
-    const data = await fs.promises.readFile(jobPath, 'utf-8');
-    res.json(JSON.parse(data));
-  } catch (err) {
-    res.status(404).json({ success: false, status: 'not_found', message: 'Job not found.' });
-  }
-});
+    const {
+      videoUrl,
+      fontName,
+      fontSize,
+      fontColorHex,
+      lineSpacing,
+      animation,
+      outlineColorHex,
+      outlineWidth,
+      shadow,
+      box,
+      boxColorHex,
+      boxPadding,
+      customX,
+      customY,
+      preset
+    } = body;
 
-// ✅ BACKGROUND RENDER WORKER
-async function processRenderJob(settings, jobId) {
-  const {
-    videoUrl,
-    fontName,
-    fontSize,
-    fontColorHex,
-    lineSpacing,
-    animation,
-    outlineColorHex,
-    outlineWidth,
-    shadow,
-    box,
-    boxColorHex,
-    boxPadding,
-    customX,
-    customY,
-    preset
-  } = settings;
-
-  try {
     const fontColor = hexToASS(fontColorHex);
     const outlineColor = hexToASS(outlineColorHex);
     const boxColor = hexToASS(boxColorHex);
@@ -83,49 +65,26 @@ async function processRenderJob(settings, jobId) {
     });
 
     const videoOutputPath = `output/${jobId}.mp4`;
+
     await fs.promises.mkdir('output', { recursive: true });
 
-    const command = `ffmpeg -y -i "${videoUrl}" -vf "subtitles=${subtitleFilePath}" -c:a copy "${videoOutputPath}"`;
+    console.time("🎧 Render video");
 
-    console.log(`🎬 Starting FFmpeg: ${command}`);
+    const command = `ffmpeg -y -i "${videoUrl}" -vf "subtitles=${subtitleFilePath},scale=720:-2" -c:a copy "${videoOutputPath}"`;
 
-    exec(command, async (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
         console.error("❌ FFmpeg error:", error.message);
-        await saveJobStatus(jobId, {
-          success: false,
-          status: 'failed',
-          error: error.message
-        });
         return;
       }
 
-      // 🔁 Replace this with actual upload logic if needed
-      const cloudinaryUrl = `https://res.cloudinary.com/YOUR_CLOUD_NAME/video/upload/v123456789/${jobId}.mp4`;
-
-      console.log('✅ Render complete:', cloudinaryUrl);
-
-      await saveJobStatus(jobId, {
-        success: true,
-        status: 'ready',
-        url: cloudinaryUrl
-      });
+      console.timeEnd("🎧 Render video");
+      console.log("✅ Final video written:", videoOutputPath);
     });
 
   } catch (err) {
-    console.error("❌ Background render failed:", err.message);
-    await saveJobStatus(jobId, {
-      success: false,
-      status: 'failed',
-      error: err.message
-    });
+    console.error("❌ Render job error:", err.message);
   }
-}
-
-// ✅ Save job status to disk
-async function saveJobStatus(jobId, data) {
-  const filePath = path.join(jobsDir, `${jobId}.json`);
-  await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
 app.listen(port, () => {
