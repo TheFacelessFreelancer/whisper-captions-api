@@ -1,7 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import { hexToASS } from './colors.js';
-
 /**
  * Builds an ASS subtitle file with full support for:
  * - Timing logic
@@ -10,6 +6,16 @@ import { hexToASS } from './colors.js';
  * - Multiple captions
  * - Dynamic animation effects
  */
+// ────────────────────────────────────────────────
+// IMPORTS AND DEPENDENCIES
+// ────────────────────────────────────────────────
+import fs from 'fs';
+import path from 'path';
+import { hexToASS } from './colors.js';
+
+// ────────────────────────────────────────────────
+// MAIN EXPORT FUNCTION
+// ────────────────────────────────────────────────
 export async function buildSubtitlesFile({
   jobId,
   fontName,
@@ -30,11 +36,16 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
+  // ────────────────────────────────────────────────
+  // FILE SETUP
+  // ────────────────────────────────────────────────
   const subtitlesDir = path.join('subtitles');
   const filePath = path.join(subtitlesDir, `${jobId}.ass`);
-
   await fs.promises.mkdir(subtitlesDir, { recursive: true });
 
+  // ────────────────────────────────────────────────
+  // TEXT TRANSFORM HELPERS
+  // ────────────────────────────────────────────────
   const applyCaps = (text) => {
     if (caps === 'allcaps') return text.toUpperCase();
     if (caps === 'titlecase') return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
@@ -48,25 +59,34 @@ export async function buildSubtitlesFile({
       .replace(/"/g, '\\"');
   };
 
-  const applyAnimation = (text, type) => {
+  // ────────────────────────────────────────────────
+  // ANIMATION TAG LOGIC
+  // ────────────────────────────────────────────────
+  const getAnimationTags = (text, type) => {
     switch (type) {
       case 'fade':
-        return `{\\fad(200,200)}${text}`;
-      case 'typewriter':
-        return text.split('').map(char => `{\\k20}${char}`).join('');
-      case 'word-by-word':
-        return text.split(' ').map(word => `{\\k40}${word}`).join(' ');
+        return `\\fad(300,300)`;
+      case 'typewriter': {
+        const letters = text.split('').map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}${char}`).join('');
+        return `\\an5${letters}`;
+      }
+      case 'word-by-word': {
+        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}${word}`).join(' ');
+        return `\\an5${words}`;
+      }
       case 'bounce':
-        return `{\\move(${customX},${customY + 100},${customX},${customY})}${text}`;
+        return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
       case 'pop':
-        return `{\\t(0,200,\\fscx150\\fscy150)}{\\t(200,400,\\fscx100\\fscy100)}${text}`;
+        return `\\t(0,200,\\fscx130\\fscy130)\\t(200,400,\\fscx100\\fscy100)`;
       default:
-        return text;
+        return '';
     }
   };
 
+  // ────────────────────────────────────────────────
+  // STYLE HEADER
+  // ────────────────────────────────────────────────
   const boxColorAss = box ? boxColor : '&H00000000';
-
   const style = `
 [Script Info]
 Title: Captions
@@ -82,18 +102,23 @@ Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},$
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
+  // ────────────────────────────────────────────────
+  // FORMATTED CAPTIONS
+  // ────────────────────────────────────────────────
   const formattedCaptions = captions
     .filter(c => c.start && c.end && c.text)
     .map((caption) => {
       const cleanText = applyCaps(escapeText(caption.text));
-      const animated = applyAnimation(cleanText, animation);
+      const anim = getAnimationTags(cleanText, animation);
       const pos = `\\pos(${customX},${customY})`;
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${animated}`;
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
     })
     .join('\n');
 
+  // ────────────────────────────────────────────────
+  // FILE OUTPUT
+  // ────────────────────────────────────────────────
   const content = style + formattedCaptions;
-
   await fs.promises.writeFile(filePath, content);
   console.log(`✅ Subtitle file written: ${filePath}`);
   return filePath;
