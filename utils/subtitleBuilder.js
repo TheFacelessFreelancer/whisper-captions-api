@@ -8,6 +8,7 @@ import { hexToASS } from './colors.js';
  * - Center-based \pos(x,y) alignment
  * - Font, box, and text effects
  * - Multiple captions
+ * - Dynamic animation effects
  */
 export async function buildSubtitlesFile({
   jobId,
@@ -47,6 +48,23 @@ export async function buildSubtitlesFile({
       .replace(/"/g, '\\"');
   };
 
+  const applyAnimation = (text, type) => {
+    switch (type) {
+      case 'fade':
+        return `{\\fad(200,200)}${text}`;
+      case 'typewriter':
+        return text.split('').map(char => `{\\k20}${char}`).join('');
+      case 'word-by-word':
+        return text.split(' ').map(word => `{\\k40}${word}`).join(' ');
+      case 'bounce':
+        return `{\\move(${customX},${customY + 100},${customX},${customY})}${text}`;
+      case 'pop':
+        return `{\\t(0,200,\\fscx150\\fscy150)}{\\t(200,400,\\fscx100\\fscy100)}${text}`;
+      default:
+        return text;
+    }
+  };
+
   const boxColorAss = box ? boxColor : '&H00000000';
 
   const style = `
@@ -68,8 +86,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     .filter(c => c.start && c.end && c.text)
     .map((caption) => {
       const cleanText = applyCaps(escapeText(caption.text));
+      const animated = applyAnimation(cleanText, animation);
       const pos = `\\pos(${customX},${customY})`;
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${cleanText}`;
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${animated}`;
     })
     .join('\n');
 
