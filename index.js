@@ -28,6 +28,7 @@ import { exec } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import { buildSubtitlesFile } from './utils/subtitleBuilder.js';
 import { hexToASS } from './utils/colors.js';
+import { uploadToCloudinary } from './utils/cloudinary.js';
 
 // ────────────────────────────────────────────────
 // 2. EXPRESS SERVER SETUP
@@ -113,20 +114,20 @@ app.post('/subtitles', async (req, res) => {
       // ────────────────────────────────────────────────
       // 6. RESPONSE WITH JOB ID
       // ────────────────────────────────────────────────
-      console.log(`✅ Render complete: https://res.cloudinary.com/de3ip4mlt/video/upload/v123456789/${safeFileName}.mp4`);
-      res.json({
-        success: true,
-        jobId: jobId,
-        url: `https://res.cloudinary.com/de3ip4mlt/video/upload/v123456789/${safeFileName}.mp4`,
-        status: 'ready'
-      });
+      uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`)
+  .then((cloudUrl) => {
+    console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
+    res.json({
+      success: true,
+      jobId: jobId,
+      url: cloudUrl,
+      status: 'ready'
     });
-
-  } catch (err) {
-    console.error("❌ Server error:", err.message);
-    res.status(500).json({ error: 'Something went wrong.' });
-  }
-});
+  })
+  .catch((err) => {
+    console.error("❌ Cloudinary upload failed:", err.message);
+    res.status(500).json({ error: 'Video rendered but upload failed.' });
+  });
 
 // ────────────────────────────────────────────────
 // EXPRESS SERVER LISTENER
