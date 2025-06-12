@@ -5,7 +5,20 @@
  * - Font, box, and text effects
  * - Multiple captions
  * - Dynamic animation effects
+ *
+ * ────────────────────────────────────────────────
+ * TABLE OF CONTENTS
+ * ────────────────────────────────────────────────
+ * 1. IMPORTS AND DEPENDENCIES
+ * 2. MAIN EXPORT FUNCTION: buildSubtitlesFile({...})
+ * 3. FILE SETUP
+ * 4. TEXT TRANSFORM HELPERS: applyCaps(), escapeText()
+ * 5. ANIMATION TAG LOGIC: getAnimationTags()
+ * 6. STYLE HEADER: [Script Info], [V4+ Styles], [Events]
+ * 7. FORMATTED CAPTIONS: text formatting, animation, and position
+ * 8. FILE OUTPUT: Write .ASS file to disk
  */
+
 // ────────────────────────────────────────────────
 // IMPORTS AND DEPENDENCIES
 // ────────────────────────────────────────────────
