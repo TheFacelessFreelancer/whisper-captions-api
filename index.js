@@ -6,44 +6,18 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { buildSubtitlesFile } from './utils/subtitleBuilder.js';
 import { hexToASS } from './utils/colors.js';
+import cloudinary from './utils/cloudinary.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-await fs.promises.mkdir('output', { recursive: true });
-await fs.promises.mkdir('jobs', { recursive: true });
-
+// Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
 
-// ✅ Module 1: Create Captions
+// In-memory job tracker (used for polling)
+const jobQueue = {};
+
 app.post('/subtitles', async (req, res) => {
-  const jobId = uuidv4();
-
-  // Return the jobId immediately
-  res.json({ jobId });
-
-  // Start background render
-  handleJob(req.body, jobId);
-});
-
-// ✅ Module 2: Status Tracker
-app.get('/results/:jobId', async (req, res) => {
-  const jobPath = path.join('jobs', `${req.params.jobId}.json`);
-
-  try {
-    const data = await fs.promises.readFile(jobPath, 'utf-8');
-    res.json(JSON.parse(data));
-  } catch (err) {
-    res.status(404).json({
-      success: false,
-      status: 'not_found',
-      message: 'Job not found.'
-    });
-  }
-});
-
-// 🧠 Background renderer
-async function handleJob(settings, jobId) {
   try {
     const {
       videoUrl,
@@ -61,8 +35,11 @@ async function handleJob(settings, jobId) {
       customX,
       customY,
       preset,
-      outputFileName
-    } = settings;
+      preferredFilename
+    } = req.body;
+
+    const jobId = uuidv4();
+    jobQueue[jobId] = { status: 'processing' };
 
     const fontColor = hexToASS(fontColorHex);
     const outlineColor = hexToASS(outlineColorHex);
@@ -86,53 +63,69 @@ async function handleJob(settings, jobId) {
       preset
     });
 
-    // ✅ Determine final filename
-    const safeFileName = outputFileName?.trim().replace(/[^a-z0-9_-]/gi, "_") || jobId;
-    const outputPath = `output/${safeFileName}.mp4`;
+    const outputDir = path.join('output');
+    await fs.promises.mkdir(outputDir, { recursive: true });
 
-    console.time("🎬 FFmpeg render");
+    const outputFileName = preferredFilename ? `${preferredFilename}.mp4` : `${jobId}.mp4`;
+    const outputPath = path.join(outputDir, outputFileName);
 
     const command = `ffmpeg -y -i "${videoUrl}" -vf "subtitles=${subtitleFilePath},scale=720:-2" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
 
-    console.log('▶ Running:', command);
+    console.log(`▶ Running: ${command}`);
 
     exec(command, async (error, stdout, stderr) => {
       if (error) {
         console.error("❌ FFmpeg error:", error.message);
-        return await saveJobStatus(jobId, {
-          success: false,
-          status: 'failed',
-          error: error.message
-        });
+        jobQueue[jobId] = { status: 'error', error: error.message };
+        fs.writeFileSync(`results/${jobId}.json`, JSON.stringify({ success: false, error: error.message }, null, 2));
+        return;
       }
 
-      const publicUrl = `https://res.cloudinary.com/YOUR_CLOUD_NAME/video/upload/v123456789/${safeFileName}.mp4`;
+      console.log(`✅ Render complete: ${outputPath}`);
 
-      console.log("✅ Render complete:", publicUrl);
-
-      await saveJobStatus(jobId, {
-        success: true,
-        status: 'ready',
-        url: publicUrl
+      // Upload to Cloudinary
+      const cloudResult = await cloudinary.uploader.upload(outputPath, {
+        resource_type: 'video',
+        folder: 'captions-app',
+        public_id: preferredFilename || jobId
       });
+
+      const cloudUrl = cloudResult.secure_url;
+
+      // Update job status
+      jobQueue[jobId] = { status: 'ready', url: cloudUrl };
+      fs.writeFileSync(`results/${jobId}.json`, JSON.stringify({ success: true, url: cloudUrl }, null, 2));
+
+      console.log(`🌐 Uploaded to Cloudinary: ${cloudUrl}`);
+    });
+
+    // Return jobId immediately
+    res.json({
+      success: true,
+      jobId: jobId
     });
 
   } catch (err) {
-    console.error("❌ Job handler failed:", err.message);
-    await saveJobStatus(jobId, {
-      success: false,
-      status: 'failed',
-      error: err.message
-    });
+    console.error("❌ Server error:", err.message);
+    res.status(500).json({ error: 'Something went wrong.' });
   }
-}
+});
 
-// 💾 Save result JSON for polling
-async function saveJobStatus(jobId, data) {
-  const filePath = path.join('jobs', `${jobId}.json`);
-  await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2));
-}
+// Status Tracker route for polling
+app.get('/results/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  const resultFile = path.join('results', `${jobId}.json`);
 
+  if (fs.existsSync(resultFile)) {
+    const data = fs.readFileSync(resultFile, 'utf-8');
+    res.setHeader('Content-Type', 'application/json');
+    res.end(data);
+  } else {
+    res.json({ success: false, status: 'processing' });
+  }
+});
+
+// Start the server
 app.listen(port, () => {
-  console.log(`🚀 Caption Factory API running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
