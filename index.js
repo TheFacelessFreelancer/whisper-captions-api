@@ -109,25 +109,32 @@ app.post('/subtitles', async (req, res) => {
       if (error) {
         console.error("❌ FFmpeg error:", error.message);
         return res.status(500).json({ error: 'Failed to process video with subtitles.' });
-      }//
+      }
 
       // ────────────────────────────────────────────────
       // 6. RESPONSE WITH JOB ID
       // ────────────────────────────────────────────────
       uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`)
-  .then((cloudUrl) => {
-    console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
-    res.json({
-      success: true,
-      jobId: jobId,
-      url: cloudUrl,
-      status: 'ready'
-    });
-  })
-  .catch((err) => {
-    console.error("❌ Cloudinary upload failed:", err.message);
-    res.status(500).json({ error: 'Video rendered but upload failed.' });
-  });//
+        .then((cloudUrl) => {
+          console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
+          res.json({
+            success: true,
+            jobId: jobId,
+            url: cloudUrl,
+            status: 'ready'
+          });
+        })
+        .catch((err) => {
+          console.error("❌ Cloudinary upload failed:", err.message);
+          res.status(500).json({ error: 'Video rendered but upload failed.' });
+        });
+    }); // closes exec()
+
+  } catch (err) {
+    console.error("❌ Server error:", err.message);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+}); // closes app.post()
 
 // ────────────────────────────────────────────────
 // EXPRESS SERVER LISTENER
