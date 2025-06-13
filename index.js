@@ -109,7 +109,7 @@ app.post('/subtitles', async (req, res) => {
       if (error) {
         console.error("❌ FFmpeg error:", error.message);
         return res.status(500).json({ error: 'Failed to process video with subtitles.' });
-      }
+      }//
 
       // ────────────────────────────────────────────────
       // 6. RESPONSE WITH JOB ID
@@ -134,4 +134,4 @@ app.post('/subtitles', async (req, res) => {
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
-});//
+});
