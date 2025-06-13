@@ -5,7 +5,7 @@
  * - Subtitle creation via ASS styling
  * - FFmpeg rendering (modularized)
  * - Cloudinary video delivery
- * - Job ID returns for polling
+ * - Job ID returns for polling (immediate response)
  * - Cross-origin and logging support
  *
  * ────────────────────────────────────────────────
@@ -15,8 +15,8 @@
  * 2. EXPRESS SERVER SETUP
  * 3. POST ENDPOINT: /subtitles
  * 4. SUBTITLE FILE CREATION
- * 5. VIDEO RENDERING WITH FFMPEG
- * 6. RESPONSE WITH JOB ID
+ * 5. BACKGROUND VIDEO RENDERING
+ * 6. EXPRESS SERVER LISTENER
  */
 
 // ────────────────────────────────────────────────
@@ -102,30 +102,22 @@ app.post('/subtitles', async (req, res) => {
       captions
     });
 
+    // ✅ IMMEDIATE RESPONSE — return jobId to Make.com
+    res.json({ jobId, success: true });
+
     // ────────────────────────────────────────────────
-    // 5. VIDEO RENDERING WITH FFMPEG
+    // 5. BACKGROUND VIDEO RENDERING
     // ────────────────────────────────────────────────
     const videoOutputPath = `output/${safeFileName}.mp4`;
     await fs.promises.mkdir('output', { recursive: true });
 
-    await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
-
-    // ────────────────────────────────────────────────
-    // 6. RESPONSE WITH JOB ID
-    // ────────────────────────────────────────────────
-    uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`)
+    renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath)
+      .then(() => uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`))
       .then((cloudUrl) => {
         console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
-        res.json({
-          success: true,
-          jobId: jobId,
-          url: cloudUrl,
-          status: 'ready'
-        });
       })
       .catch((err) => {
-        console.error("❌ Cloudinary upload failed:", err.message);
-        res.status(500).json({ error: 'Video rendered but upload failed.' });
+        console.error("❌ Background processing error:", err.message);
       });
 
   } catch (err) {
@@ -135,7 +127,7 @@ app.post('/subtitles', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// EXPRESS SERVER LISTENER
+// 6. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
