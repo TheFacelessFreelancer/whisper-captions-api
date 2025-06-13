@@ -1,8 +1,29 @@
+/**
+ * ffmpeg.js - Video Processing Helpers
+ *
+ * Handles:
+ * - Audio extraction (MP3)
+ * - Subtitle rendering via .ASS files
+ *
+ * ────────────────────────────────────────────────
+ * TABLE OF CONTENTS
+ * ────────────────────────────────────────────────
+ * 1. IMPORTS AND DEPENDENCIES
+ * 2. AUDIO EXTRACTION: extractAudio()
+ * 3. SUBTITLE RENDERING: renderVideoWithSubtitles()
+ */
+
+// ────────────────────────────────────────────────
+// 1. IMPORTS AND DEPENDENCIES
+// ────────────────────────────────────────────────
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// ────────────────────────────────────────────────
+// 2. AUDIO EXTRACTION
+// ────────────────────────────────────────────────
 /**
  * Extracts audio from a video and saves it as MP3.
  * @param {string} videoPath - Path to the input video.
@@ -15,6 +36,9 @@ export const extractAudio = async (videoPath, audioPath) => {
   console.log('✅ Audio extracted:', audioPath);
 };
 
+// ────────────────────────────────────────────────
+// 3. SUBTITLE RENDERING
+// ────────────────────────────────────────────────
 /**
  * Renders subtitles onto the video using a .ass file and saves the final MP4.
  * @param {string} videoPath - Input video file path.
