@@ -3,9 +3,10 @@
  *
  * Handles:
  * - Subtitle creation via ASS styling
- * - FFmpeg rendering
+ * - FFmpeg rendering (modularized)
  * - Cloudinary video delivery
  * - Job ID returns for polling
+ * - Cross-origin and logging support
  *
  * ────────────────────────────────────────────────
  * TABLE OF CONTENTS
@@ -23,18 +24,23 @@
 // ────────────────────────────────────────────────
 import express from 'express';
 import bodyParser from 'body-parser';
+import cors from 'cors';
+import morgan from 'morgan';
+import multer from 'multer';
 import fs from 'fs';
-import { exec } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import { buildSubtitlesFile } from './utils/subtitleBuilder.js';
 import { hexToASS } from './utils/colors.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
+import { renderVideoWithSubtitles } from './utils/ffmpeg.js';
 
 // ────────────────────────────────────────────────
 // 2. EXPRESS SERVER SETUP
 // ────────────────────────────────────────────────
 const app = express();
 const port = process.env.PORT || 3000;
+app.use(cors());
+app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // ────────────────────────────────────────────────
@@ -102,39 +108,31 @@ app.post('/subtitles', async (req, res) => {
     const videoOutputPath = `output/${safeFileName}.mp4`;
     await fs.promises.mkdir('output', { recursive: true });
 
-    const command = `ffmpeg -y -i "${videoUrl}" -vf "subtitles=${subtitleFilePath},scale=720:-2" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${videoOutputPath}"`;
-    console.log(`▶ Running: ${command}`);
+    await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
 
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error("❌ FFmpeg error:", error.message);
-        return res.status(500).json({ error: 'Failed to process video with subtitles.' });
-      }
-
-      // ────────────────────────────────────────────────
-      // 6. RESPONSE WITH JOB ID
-      // ────────────────────────────────────────────────
-      uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`)
-        .then((cloudUrl) => {
-          console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
-          res.json({
-            success: true,
-            jobId: jobId,
-            url: cloudUrl,
-            status: 'ready'
-          });
-        })
-        .catch((err) => {
-          console.error("❌ Cloudinary upload failed:", err.message);
-          res.status(500).json({ error: 'Video rendered but upload failed.' });
+    // ────────────────────────────────────────────────
+    // 6. RESPONSE WITH JOB ID
+    // ────────────────────────────────────────────────
+    uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`)
+      .then((cloudUrl) => {
+        console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
+        res.json({
+          success: true,
+          jobId: jobId,
+          url: cloudUrl,
+          status: 'ready'
         });
-    }); // closes exec()
+      })
+      .catch((err) => {
+        console.error("❌ Cloudinary upload failed:", err.message);
+        res.status(500).json({ error: 'Video rendered but upload failed.' });
+      });
 
   } catch (err) {
     console.error("❌ Server error:", err.message);
     res.status(500).json({ error: 'Something went wrong.' });
   }
-}); // closes app.post()
+});
 
 // ────────────────────────────────────────────────
 // EXPRESS SERVER LISTENER
