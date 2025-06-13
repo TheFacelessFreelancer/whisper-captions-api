@@ -127,11 +127,11 @@ app.post('/subtitles', async (req, res) => {
   .catch((err) => {
     console.error("❌ Cloudinary upload failed:", err.message);
     res.status(500).json({ error: 'Video rendered but upload failed.' });
-  });
+  });//
 
 // ────────────────────────────────────────────────
 // EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
-});
+});//
