@@ -1,24 +1,23 @@
 /**
- * ffmpeg.js - Video Processing Helpers
+ * ffmpeg.js - Handles FFmpeg video and audio processing
  *
- * Handles:
- * - Audio extraction (MP3)
- * - Subtitle rendering via .ASS files
+ * Includes:
+ * - Extracting audio from videos
+ * - Rendering subtitles on videos with scaling
  *
  * ────────────────────────────────────────────────
  * TABLE OF CONTENTS
  * ────────────────────────────────────────────────
- * 1. IMPORTS AND DEPENDENCIES
- * 2. AUDIO EXTRACTION: extractAudio()
- * 3. SUBTITLE RENDERING: renderVideoWithSubtitles()
+ * 1. IMPORTS AND UTILITIES
+ * 2. AUDIO EXTRACTION: extractAudio(videoPath, audioPath)
+ * 3. VIDEO RENDERING: renderVideoWithSubtitles(videoPath, subtitlePath, outputPath)
  */
 
 // ────────────────────────────────────────────────
-// 1. IMPORTS AND DEPENDENCIES
+// 1. IMPORTS AND UTILITIES
 // ────────────────────────────────────────────────
 import { exec } from 'child_process';
 import { promisify } from 'util';
-
 const execAsync = promisify(exec);
 
 // ────────────────────────────────────────────────
@@ -37,7 +36,7 @@ export const extractAudio = async (videoPath, audioPath) => {
 };
 
 // ────────────────────────────────────────────────
-// 3. SUBTITLE RENDERING
+// 3. VIDEO RENDERING
 // ────────────────────────────────────────────────
 /**
  * Renders subtitles onto the video using a .ass file and saves the final MP4.
@@ -48,7 +47,8 @@ export const extractAudio = async (videoPath, audioPath) => {
 export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPath) => {
   console.log('🎬 Rendering video with subtitles...');
   const escapedSubtitlePath = subtitlePath.replace(/\\/g, '/'); // escape for Windows paths
-  const command = `ffmpeg -i "${videoPath}" -vf "ass='${escapedSubtitlePath}',scale=720:-2" -c:v libx264 -preset fast -crf 23 -c:a copy "${outputPath}" -y`;
+  const command = `ffmpeg -y -i "${videoPath}" -vf "subtitles=${escapedSubtitlePath},scale=720:-2" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
+  console.log(`▶ Running: ${command}`);
   await execAsync(command);
   console.log('✅ Final video rendered:', outputPath);
 };
