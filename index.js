@@ -85,49 +85,57 @@ app.post('/subtitles', async (req, res) => {
     // 4. BACKGROUND VIDEO RENDERING (DETACHED)
     // ────────────────────────────────────────────────
     setTimeout(async () => {
-      try {
-        await fs.promises.mkdir('output', { recursive: true });
+  try {
+    await fs.promises.mkdir('output', { recursive: true });
 
-        // ✅ Log caption input to debug missing subtitle issue
-        console.log("📺 Captions Received:", captions);
+    // Step 1: Download audio from video
+    const audioPath = `output/${safeFileName}.mp3`;
+    const videoPath = videoUrl; // Cloudinary-hosted URL
+    await extractAudio(videoPath, audioPath);
 
-        const subtitleFilePath = await buildSubtitlesFile({
-          jobId,
-          fontName,
-          fontSize,
-          fontColor,
-          lineSpacing,
-          animation,
-          outlineColor,
-          outlineWidth,
-          shadow,
-          box,
-          boxColor,
-          boxPadding,
-          customX,
-          customY,
-          effects,
-          caps,
-          lineLayout,
-          captions
-        });
+    // Step 2: Transcribe audio to captions using Whisper
+    const whisperResponse = await whisperTranscribe(audioPath);
 
-        const videoOutputPath = `output/${safeFileName}.mp4`;
+    const captions = whisperResponse.segments.map(segment => ({
+      start: Number(segment.start).toFixed(2).replace('.', ':'),
+      end: Number(segment.end).toFixed(2).replace('.', ':'),
+      text: segment.text.trim()
+    }));
 
-        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
+    console.log("📺 Captions Generated from Whisper:", captions);
 
-        await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+    // Step 3: Generate subtitles and render video
+    const subtitleFilePath = await buildSubtitlesFile({
+      jobId,
+      fontName,
+      fontSize,
+      fontColor,
+      lineSpacing,
+      animation,
+      outlineColor,
+      outlineWidth,
+      shadow,
+      box,
+      boxColor,
+      boxPadding,
+      customX,
+      customY,
+      effects,
+      caps,
+      lineLayout,
+      captions
+    });
 
-      } catch (err) {
-        console.error("❌ Error in background rendering:", err.message);
-      }
-    }, 10); // Ensure response is flushed first
+    const videoOutputPath = `output/${safeFileName}.mp4`;
+
+    await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
+
+    await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
 
   } catch (err) {
-    console.error("❌ Server error:", err.message);
-    res.status(500).json({ error: 'Something went wrong.' });
+    console.error("❌ Error in background rendering:", err.message);
   }
-});
+}, 10); // Ensure response is flushed first
 
 // ────────────────────────────────────────────────
 // 5. EXPRESS SERVER LISTENER
