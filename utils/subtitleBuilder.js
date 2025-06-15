@@ -125,7 +125,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const anim = getAnimationTags(cleanText, animation);
       const adjustedX = 540 + customX;
       const adjustedY = 960 - customY;
-      const pos = `\\pos(${adjustedX},${adjustedY})`;
+      const pos = `\\an5\\pos(${adjustedX},${adjustedY})`;
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
     })
     .join('\n');
