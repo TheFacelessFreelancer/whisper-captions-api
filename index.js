@@ -7,6 +7,7 @@
  * - Cloudinary video delivery
  * - Job ID returns for polling (immediate response)
  * - Cross-origin and logging support
+ * - Non-blocking background rendering (Make.com safe)
  *
  * ────────────────────────────────────────────────
  * TABLE OF CONTENTS
@@ -14,9 +15,8 @@
  * 1. IMPORTS AND DEPENDENCIES
  * 2. EXPRESS SERVER SETUP
  * 3. POST ENDPOINT: /subtitles
- * 4. SUBTITLE FILE CREATION
- * 5. BACKGROUND VIDEO RENDERING
- * 6. EXPRESS SERVER LISTENER
+ * 4. BACKGROUND VIDEO RENDERING (DETACHED)
+ * 5. EXPRESS SERVER LISTENER
  */
 
 // ────────────────────────────────────────────────
@@ -26,7 +26,6 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import morgan from 'morgan';
-import multer from 'multer';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { buildSubtitlesFile } from './utils/subtitleBuilder.js';
@@ -78,47 +77,47 @@ app.post('/subtitles', async (req, res) => {
     const outlineColor = hexToASS(outlineColorHex);
     const boxColor = hexToASS(boxColorHex);
 
-    // ────────────────────────────────────────────────
-    // 4. SUBTITLE FILE CREATION
-    // ────────────────────────────────────────────────
-    const subtitleFilePath = await buildSubtitlesFile({
-      jobId,
-      fontName,
-      fontSize,
-      fontColor,
-      lineSpacing,
-      animation,
-      outlineColor,
-      outlineWidth,
-      shadow,
-      box,
-      boxColor,
-      boxPadding,
-      customX,
-      customY,
-      effects,
-      caps,
-      lineLayout,
-      captions
-    });
-
-    // ✅ IMMEDIATE RESPONSE — return jobId to Make.com
+    // ✅ Immediate response to Make (non-blocking)
     res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
-    // 5. BACKGROUND VIDEO RENDERING
+    // 4. BACKGROUND VIDEO RENDERING (DETACHED)
     // ────────────────────────────────────────────────
-    const videoOutputPath = `output/${safeFileName}.mp4`;
-    await fs.promises.mkdir('output', { recursive: true });
+    setTimeout(async () => {
+      try {
+        await fs.promises.mkdir('output', { recursive: true });
 
-    renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath)
-      .then(() => uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`))
-      .then((cloudUrl) => {
-        console.log(`✅ Uploaded to Cloudinary: ${cloudUrl}`);
-      })
-      .catch((err) => {
-        console.error("❌ Background processing error:", err.message);
-      });
+        const subtitleFilePath = await buildSubtitlesFile({
+          jobId,
+          fontName,
+          fontSize,
+          fontColor,
+          lineSpacing,
+          animation,
+          outlineColor,
+          outlineWidth,
+          shadow,
+          box,
+          boxColor,
+          boxPadding,
+          customX,
+          customY,
+          effects,
+          caps,
+          lineLayout,
+          captions
+        });
+
+        const videoOutputPath = `output/${safeFileName}.mp4`;
+
+        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
+
+        await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+
+      } catch (err) {
+        console.error("❌ Error in background rendering:", err.message);
+      }
+    }, 10); // Ensure response is flushed first
 
   } catch (err) {
     console.error("❌ Server error:", err.message);
@@ -127,7 +126,7 @@ app.post('/subtitles', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// 6. EXPRESS SERVER LISTENER
+// 5. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
