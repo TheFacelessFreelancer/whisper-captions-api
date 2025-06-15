@@ -8,15 +8,6 @@
  * - Job ID returns for polling (immediate response)
  * - Cross-origin and logging support
  * - Non-blocking background rendering (Make.com safe)
- *
- * ────────────────────────────────────────────────
- * TABLE OF CONTENTS
- * ────────────────────────────────────────────────
- * 1. IMPORTS AND DEPENDENCIES
- * 2. EXPRESS SERVER SETUP
- * 3. POST ENDPOINT: /subtitles
- * 4. BACKGROUND VIDEO RENDERING (DETACHED)
- * 5. EXPRESS SERVER LISTENER
  */
 
 // ────────────────────────────────────────────────
@@ -44,7 +35,18 @@ app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // ────────────────────────────────────────────────
-// 3. POST ENDPOINT: /subtitles
+// 3. TIMECODE FORMATTER: seconds → ASS time
+// ────────────────────────────────────────────────
+const secondsToAss = (seconds) => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
+  return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
+};
+
+// ────────────────────────────────────────────────
+// 4. POST ENDPOINT: /subtitles
 // ────────────────────────────────────────────────
 app.post('/subtitles', async (req, res) => {
   try {
@@ -77,29 +79,40 @@ app.post('/subtitles', async (req, res) => {
     const outlineColor = hexToASS(outlineColorHex);
     const boxColor = hexToASS(boxColorHex);
 
+    // 🔁 Override positioning using preset (bottom-safe, top-safe, etc.)
+    let finalCustomY = customY;
+    if (preset === 'top-safe') finalCustomY = 750;
+    else if (preset === 'bottom-safe') finalCustomY = -350;
+    else if (preset === 'center') finalCustomY = 0;
+
+    // ✅ Respond to Make immediately
     console.log("🚀 Sending response to Make:", { jobId, success: true });
     res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
-    // 4. BACKGROUND VIDEO RENDERING (DETACHED)
+    // 5. BACKGROUND VIDEO RENDERING
     // ────────────────────────────────────────────────
     setTimeout(async () => {
       try {
         await fs.promises.mkdir('output', { recursive: true });
 
+        // Step 1: Extract audio from video
         const audioPath = `output/${safeFileName}.mp3`;
         await extractAudio(videoUrl, audioPath);
 
+        // Step 2: Transcribe with Whisper
         const whisperResponse = await whisperTranscribe(audioPath);
 
+        // Step 3: Format Whisper segments into captions[]
         const captions = whisperResponse.segments.map(segment => ({
-          start: new Date(segment.start * 1000).toISOString().substr(11, 12),
-          end: new Date(segment.end * 1000).toISOString().substr(11, 12),
+          start: secondsToAss(segment.start),
+          end: secondsToAss(segment.end),
           text: segment.text.trim()
         }));
 
         console.log("📺 Captions Generated:", captions);
 
+        // Step 4: Build .ass subtitle file
         const subtitleFilePath = await buildSubtitlesFile({
           jobId,
           fontName,
@@ -114,15 +127,15 @@ app.post('/subtitles', async (req, res) => {
           boxColor,
           boxPadding,
           customX,
-          customY,
+          customY: finalCustomY,
           effects,
           caps,
           lineLayout,
           captions
         });
 
+        // Step 5: Render and upload
         const videoOutputPath = `output/${safeFileName}.mp4`;
-
         await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
         await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
       } catch (err) {
@@ -137,7 +150,7 @@ app.post('/subtitles', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// 5. EXPRESS SERVER LISTENER
+// 6. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
