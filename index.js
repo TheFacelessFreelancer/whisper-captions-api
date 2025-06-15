@@ -179,11 +179,12 @@ app.get('/results/:jobId', (req, res) => {
   const result = jobResults[jobId];
 
   if (!result) {
-    return res.status(404).json({
-      success: false,
-      message: 'Job not found or not finished yet'
-    });
-  }
+  return res.json({
+    success: false,
+    videoUrl: null,
+    message: 'Job not finished yet'
+  });
+}
 
   res.json({
     jobId,
