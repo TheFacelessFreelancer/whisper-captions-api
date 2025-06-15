@@ -8,6 +8,18 @@
  * - Job ID returns for polling (immediate response)
  * - Cross-origin and logging support
  * - Non-blocking background rendering (Make.com safe)
+ *
+ * ────────────────────────────────────────────────
+ * TABLE OF CONTENTS
+ * ────────────────────────────────────────────────
+ * 1. IMPORTS AND DEPENDENCIES
+ * 2. IN-MEMORY CACHE FOR JOB RESULTS
+ * 3. EXPRESS SERVER SETUP
+ * 4. TIMECODE FORMATTER: seconds → ASS time
+ * 5. POST ENDPOINT: /subtitles
+ * 6. BACKGROUND VIDEO RENDERING (ASYNC)
+ * 7. JOB STATUS LOOKUP ENDPOINT: /results/:jobId
+ * 8. EXPRESS SERVER LISTENER
  */
 
 // ────────────────────────────────────────────────
@@ -26,7 +38,12 @@ import { renderVideoWithSubtitles, extractAudio } from './utils/ffmpeg.js';
 import whisperTranscribe from './utils/whisper.js';
 
 // ────────────────────────────────────────────────
-// 2. EXPRESS SERVER SETUP
+// 2. In-memory cache for completed jobs
+// ────────────────────────────────────────────────
+const jobResults = {}; // Store completed job results in memory
+
+// ────────────────────────────────────────────────
+// 3. EXPRESS SERVER SETUP
 // ────────────────────────────────────────────────
 const app = express();
 const port = process.env.PORT || 3000;
@@ -35,7 +52,7 @@ app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // ────────────────────────────────────────────────
-// 3. TIMECODE FORMATTER: seconds → ASS time
+// 4. TIMECODE FORMATTER: seconds → ASS time
 // ────────────────────────────────────────────────
 const secondsToAss = (seconds) => {
   const hrs = Math.floor(seconds / 3600);
@@ -46,7 +63,7 @@ const secondsToAss = (seconds) => {
 };
 
 // ────────────────────────────────────────────────
-// 4. POST ENDPOINT: /subtitles
+// 5. POST ENDPOINT: /subtitles
 // ────────────────────────────────────────────────
 app.post('/subtitles', async (req, res) => {
   try {
@@ -90,7 +107,7 @@ app.post('/subtitles', async (req, res) => {
     res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
-    // 5. BACKGROUND VIDEO RENDERING
+    // 6. BACKGROUND VIDEO RENDERING
     // ────────────────────────────────────────────────
     setTimeout(async () => {
       try {
@@ -137,7 +154,12 @@ app.post('/subtitles', async (req, res) => {
         // Step 5: Render and upload
         const videoOutputPath = `output/${safeFileName}.mp4`;
         await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
-        await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+        const videoUrlFinal = await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+jobResults[jobId] = {
+  success: true,
+  videoUrl: videoUrlFinal
+};
+
       } catch (err) {
         console.error("❌ Background processing error:", err.message);
       }
@@ -150,7 +172,28 @@ app.post('/subtitles', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────
-// 6. EXPRESS SERVER LISTENER
+// 7. JOB STATUS LOOKUP ENDPOINT
+// ────────────────────────────────────────────────
+app.get('/results/:jobId', (req, res) => {
+  const jobId = req.params.jobId;
+  const result = jobResults[jobId];
+
+  if (!result) {
+    return res.status(404).json({
+      success: false,
+      message: 'Job not found or not finished yet'
+    });
+  }
+
+  res.json({
+    jobId,
+    success: true,
+    videoUrl: result.videoUrl
+  });
+});
+
+// ────────────────────────────────────────────────
+// 8. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
