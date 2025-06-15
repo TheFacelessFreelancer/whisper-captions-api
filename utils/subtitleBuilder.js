@@ -84,8 +84,10 @@ export async function buildSubtitlesFile({
         return `\\an5` + letters;
       }
       case 'word-by-word': {
-        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}` + word).join(' ');
-        return `\\an5` + words;
+        const words = text.split(' ').map((word, i) =>
+  `{\\alpha&HFF&\\t(${i * 150},${(i + 1) * 150},\\alpha&H00&)}${word}`
+).join(' ');
+return `\\an5` + words;
       }
       case 'bounce':
         return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
