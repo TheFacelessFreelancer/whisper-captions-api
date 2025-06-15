@@ -46,8 +46,8 @@ export const extractAudio = async (videoPath, audioPath) => {
  */
 export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPath) => {
   console.log('🎬 Rendering video with subtitles...');
-  const escapedSubtitlePath = subtitlePath.replace(/\\/g, '/'); // escape for Windows paths
-  const command = `ffmpeg -y -i "${videoPath}" -vf "subtitles=${escapedSubtitlePath},scale=720:-2" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
+  const escapedSubtitlePath = subtitlePath.replace(/\\/g, '/'); // Escape Windows-style backslashes
+  const command = `ffmpeg -y -i "${videoPath}" -vf "ass='${escapedSubtitlePath}'" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
   console.log(`▶ Running: ${command}`);
   await execAsync(command);
   console.log('✅ Final video rendered:', outputPath);
