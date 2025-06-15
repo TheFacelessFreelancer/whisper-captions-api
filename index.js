@@ -84,47 +84,44 @@ res.json({ jobId, success: true });
     // ────────────────────────────────────────────────
     // 4. BACKGROUND VIDEO RENDERING (DETACHED)
     // ────────────────────────────────────────────────
-    setTimeout(async () => {
-      try {
-        await fs.promises.mkdir('output', { recursive: true });
+   setTimeout(async () => {
+  try {
+    await fs.promises.mkdir('output', { recursive: true });
 
-        const subtitleFilePath = await buildSubtitlesFile({
-          jobId,
-          fontName,
-          fontSize,
-          fontColor,
-          lineSpacing,
-          animation,
-          outlineColor,
-          outlineWidth,
-          shadow,
-          box,
-          boxColor,
-          boxPadding,
-          customX,
-          customY,
-          effects,
-          caps,
-          lineLayout,
-          captions
-        });
+    // ✅ Log caption input to debug missing subtitle issue
+    console.log("📺 Captions Received:", captions);
 
-        const videoOutputPath = `output/${safeFileName}.mp4`;
+    const subtitleFilePath = await buildSubtitlesFile({
+      jobId,
+      fontName,
+      fontSize,
+      fontColor,
+      lineSpacing,
+      animation,
+      outlineColor,
+      outlineWidth,
+      shadow,
+      box,
+      boxColor,
+      boxPadding,
+      customX,
+      customY,
+      effects,
+      caps,
+      lineLayout,
+      captions
+    });
 
-        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
+    const videoOutputPath = `output/${safeFileName}.mp4`;
 
-        await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+    await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
 
-      } catch (err) {
-        console.error("❌ Error in background rendering:", err.message);
-      }
-    }, 10); // Ensure response is flushed first
+    await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
 
   } catch (err) {
-    console.error("❌ Server error:", err.message);
-    res.status(500).json({ error: 'Something went wrong.' });
+    console.error("❌ Error in background rendering:", err.message);
   }
-});
+}, 10); // Ensure response is flushed first
 
 // ────────────────────────────────────────────────
 // 5. EXPRESS SERVER LISTENER
