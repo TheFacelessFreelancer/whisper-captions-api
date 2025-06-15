@@ -71,57 +71,63 @@ app.post('/subtitles', async (req, res) => {
     } = req.body;
 
     const jobId = uuidv4();
-const safeFileName = fileName || jobId;
+    const safeFileName = fileName || jobId;
 
-const fontColor = hexToASS(fontColorHex);
-const outlineColor = hexToASS(outlineColorHex);
-const boxColor = hexToASS(boxColorHex);
+    const fontColor = hexToASS(fontColorHex);
+    const outlineColor = hexToASS(outlineColorHex);
+    const boxColor = hexToASS(boxColorHex);
 
-// ✅ Immediate response to Make (non-blocking)
-console.log("🚀 Sending response to Make:", { jobId, success: true });
-res.json({ jobId, success: true });
+    // ✅ Immediate response to Make (non-blocking)
+    console.log("🚀 Sending response to Make:", { jobId, success: true });
+    res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
     // 4. BACKGROUND VIDEO RENDERING (DETACHED)
     // ────────────────────────────────────────────────
-   setTimeout(async () => {
-  try {
-    await fs.promises.mkdir('output', { recursive: true });
+    setTimeout(async () => {
+      try {
+        await fs.promises.mkdir('output', { recursive: true });
 
-    // ✅ Log caption input to debug missing subtitle issue
-    console.log("📺 Captions Received:", captions);
+        // ✅ Log caption input to debug missing subtitle issue
+        console.log("📺 Captions Received:", captions);
 
-    const subtitleFilePath = await buildSubtitlesFile({
-      jobId,
-      fontName,
-      fontSize,
-      fontColor,
-      lineSpacing,
-      animation,
-      outlineColor,
-      outlineWidth,
-      shadow,
-      box,
-      boxColor,
-      boxPadding,
-      customX,
-      customY,
-      effects,
-      caps,
-      lineLayout,
-      captions
-    });
+        const subtitleFilePath = await buildSubtitlesFile({
+          jobId,
+          fontName,
+          fontSize,
+          fontColor,
+          lineSpacing,
+          animation,
+          outlineColor,
+          outlineWidth,
+          shadow,
+          box,
+          boxColor,
+          boxPadding,
+          customX,
+          customY,
+          effects,
+          caps,
+          lineLayout,
+          captions
+        });
 
-    const videoOutputPath = `output/${safeFileName}.mp4`;
+        const videoOutputPath = `output/${safeFileName}.mp4`;
 
-    await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
+        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
 
-    await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+        await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
+
+      } catch (err) {
+        console.error("❌ Error in background rendering:", err.message);
+      }
+    }, 10); // Ensure response is flushed first
 
   } catch (err) {
-    console.error("❌ Error in background rendering:", err.message);
+    console.error("❌ Server error:", err.message);
+    res.status(500).json({ error: 'Something went wrong.' });
   }
-}, 10); // Ensure response is flushed first
+});
 
 // ────────────────────────────────────────────────
 // 5. EXPRESS SERVER LISTENER
