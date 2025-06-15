@@ -123,8 +123,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     .map((caption) => {
       const cleanText = applyCaps(escapeText(caption.text));
       const anim = getAnimationTags(cleanText, animation);
-      const adjustedY = 960 - customY; // TikTok-style layout logic
-      const pos = `\\pos(${customX},${adjustedY})`;
+      const adjustedX = 540 + customX;
+      const adjustedY = 960 - customY;
+      const pos = `\\pos(${adjustedX},${adjustedY})`;
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
     })
     .join('\n');
