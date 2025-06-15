@@ -179,12 +179,13 @@ app.get('/results/:jobId', (req, res) => {
   const result = jobResults[jobId];
 
   if (!result) {
-  return res.json({
-    success: false,
-    videoUrl: null,
-    message: 'Job not finished yet'
-  });
-}
+    // 👇 Return 200 with success: false (no 404)
+    return res.json({
+      success: false,
+      videoUrl: null,
+      message: 'Job not ready yet'
+    });
+  }
 
   res.json({
     jobId,
