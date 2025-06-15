@@ -72,14 +72,14 @@ app.post('/subtitles', async (req, res) => {
       fileName,
       fontName,
       fontSize,
-      fontColorHex,
+      fontColor,
       lineSpacing,
       animation,
-      outlineColorHex,
+      outlineColor,
       outlineWidth,
       shadow,
       box,
-      boxColorHex,
+      boxColor,
       boxPadding,
       customX,
       customY,
@@ -92,9 +92,9 @@ app.post('/subtitles', async (req, res) => {
     const jobId = uuidv4();
     const safeFileName = fileName || jobId;
 
-    const fontColor = hexToASS(fontColorHex);
-    const outlineColor = hexToASS(outlineColorHex);
-    const boxColor = hexToASS(boxColorHex);
+    const fontColorAss = hexToASS(fontColor);
+    const outlineColorAss = hexToASS(outlineColor);
+    const boxColorAss = hexToASS(boxColor);
 
     // 🔁 Override positioning using preset (bottom-safe, top-safe, etc.)
     let finalCustomY = customY;
@@ -134,14 +134,14 @@ app.post('/subtitles', async (req, res) => {
           jobId,
           fontName,
           fontSize,
-          fontColor,
+          fontColor: fontColorAss,
           lineSpacing,
           animation,
-          outlineColor,
+          outlineColor: outlineColorAss,
           outlineWidth,
           shadow,
           box,
-          boxColor,
+          boxColor: boxColorAss,
           boxPadding,
           customX,
           customY: finalCustomY,
@@ -155,10 +155,11 @@ app.post('/subtitles', async (req, res) => {
         const videoOutputPath = `output/${safeFileName}.mp4`;
         await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutputPath);
         const videoUrlFinal = await uploadToCloudinary(videoOutputPath, `captions-app/${safeFileName}`);
-jobResults[jobId] = {
-  success: true,
-  videoUrl: videoUrlFinal
-};
+
+        jobResults[jobId] = {
+          success: true,
+          videoUrl: videoUrlFinal
+        };
 
       } catch (err) {
         console.error("❌ Background processing error:", err.message);
@@ -179,7 +180,6 @@ app.get('/results/:jobId', (req, res) => {
   const result = jobResults[jobId];
 
   if (!result) {
-    // 👇 Return 200 with success: false (no 404)
     return res.json({
       success: false,
       videoUrl: null,
