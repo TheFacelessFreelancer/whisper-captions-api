@@ -25,6 +25,7 @@
 // ────────────────────────────────────────────────
 // 1. IMPORTS AND DEPENDENCIES
 // ────────────────────────────────────────────────
+import path from 'path';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
