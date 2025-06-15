@@ -71,14 +71,15 @@ app.post('/subtitles', async (req, res) => {
     } = req.body;
 
     const jobId = uuidv4();
-    const safeFileName = fileName || jobId;
+const safeFileName = fileName || jobId;
 
-    const fontColor = hexToASS(fontColorHex);
-    const outlineColor = hexToASS(outlineColorHex);
-    const boxColor = hexToASS(boxColorHex);
+const fontColor = hexToASS(fontColorHex);
+const outlineColor = hexToASS(outlineColorHex);
+const boxColor = hexToASS(boxColorHex);
 
-    // ✅ Immediate response to Make (non-blocking)
-    res.json({ jobId, success: true });
+// ✅ Immediate response to Make (non-blocking)
+console.log("🚀 Sending response to Make:", { jobId, success: true });
+res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
     // 4. BACKGROUND VIDEO RENDERING (DETACHED)
