@@ -80,12 +80,12 @@ export async function buildSubtitlesFile({
       case 'fade':
         return `\\fad(300,300)`;
       case 'typewriter': {
-        const letters = text.split('').map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}${char}`).join('');
-        return `\\an5${letters}`;
+        const letters = text.split('').map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}` + char).join('');
+        return `\\an5` + letters;
       }
       case 'word-by-word': {
-        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}${word}`).join(' ');
-        return `\\an5${words}`;
+        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}` + word).join(' ');
+        return `\\an5` + words;
       }
       case 'bounce':
         return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
@@ -123,7 +123,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     .map((caption) => {
       const cleanText = applyCaps(escapeText(caption.text));
       const anim = getAnimationTags(cleanText, animation);
-      const pos = `\\pos(${customX},${customY})`;
+      const adjustedY = 960 - customY; // TikTok-style layout logic
+      const pos = `\\pos(${customX},${adjustedY})`;
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
     })
     .join('\n');
