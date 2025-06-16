@@ -67,27 +67,6 @@ export async function buildSubtitlesFile({
       .replace(/"/g, '\\"');
   };
 
-  const getAnimationTags = (text, type) => {
-    switch (type) {
-      case 'fade':
-        return `\\fad(300,300)`;
-      case 'typewriter': {
-        const letters = text.split('').map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}` + char).join('');
-        return letters;
-      }
-      case 'word-by-word': {
-        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}` + word).join(' ');
-        return words;
-      }
-      case 'bounce':
-        return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
-      case 'pop':
-        return `\\t(0,200,\\fscx130\\fscy130)\\t(200,400,\\fscx100\\fscy100)`;
-      default:
-        return '';
-    }
-  };
-
   // ────────────────────────────────────────────────
   // STYLE HEADER
   // ────────────────────────────────────────────────
