@@ -24,7 +24,9 @@ function fadeAnimation() {
 function typewriterAnimation(text) {
   return text
     .split('')
-    .map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}` + char)
+    .map((char, i) =>
+      `{\\alpha&HFF&\\t(${i * 30},${(i + 1) * 30},\\alpha&H00&)}${char}`
+    )
     .join('');
 }
 
