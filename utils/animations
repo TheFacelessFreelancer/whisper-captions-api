@@ -1,0 +1,12 @@
+// utils/animations.js
+
+/**
+ * Animation logic for ASS subtitles.
+ * Each animation function returns ASS override tags for the caption.
+ */
+
+export const getFadeAnimation = () => {
+  return `\\fad(300,300)`; // 300ms fade in/out
+};
+
+// Future animations can be added here
