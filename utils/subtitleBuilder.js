@@ -49,16 +49,10 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
-  // ────────────────────────────────────────────────
-  // FILE SETUP
-  // ────────────────────────────────────────────────
   const subtitlesDir = path.join('subtitles');
   const filePath = path.join(subtitlesDir, `${jobId}.ass`);
   await fs.promises.mkdir(subtitlesDir, { recursive: true });
 
-  // ────────────────────────────────────────────────
-  // TEXT TRANSFORM HELPERS
-  // ────────────────────────────────────────────────
   const applyCaps = (text) => {
     if (caps === 'allcaps') return text.toUpperCase();
     if (caps === 'titlecase') return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
@@ -72,22 +66,17 @@ export async function buildSubtitlesFile({
       .replace(/"/g, '\\"');
   };
 
-  // ────────────────────────────────────────────────
-  // ANIMATION TAG LOGIC
-  // ────────────────────────────────────────────────
   const getAnimationTags = (text, type) => {
     switch (type) {
       case 'fade':
         return `\\fad(300,300)`;
       case 'typewriter': {
         const letters = text.split('').map((char, i) => `{\\t(${i * 30},${(i + 1) * 30},\\alpha&HFF&)}` + char).join('');
-        return `\\an5` + letters;
+        return letters;
       }
       case 'word-by-word': {
-  const words = text.split(' ').map((word, i) =>
-    `{\\alpha&HFF&\\t(${i * 150},${(i + 1) * 150},\\alpha&H00&)}${word}`
-  ).join(' ');
-  return `\\an5 ${words}`; // add space to separate tag from words
+        const words = text.split(' ').map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}` + word).join(' ');
+        return words;
       }
       case 'bounce':
         return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
@@ -98,9 +87,6 @@ export async function buildSubtitlesFile({
     }
   };
 
-  // ────────────────────────────────────────────────
-  // STYLE HEADER
-  // ────────────────────────────────────────────────
   const boxColorAss = box ? boxColor : '&H00000000';
   const style = `
 [Script Info]
@@ -111,33 +97,24 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},${boxColorAss},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,1,${outlineWidth},${shadow},7,10,10,10,1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},${boxColorAss},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,1,${outlineWidth},${shadow},7,50,50,50,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // ────────────────────────────────────────────────
-  // FORMATTED CAPTIONS
-  // ────────────────────────────────────────────────
- const formattedCaptions = captions
-  .filter(c => c.start && c.end && c.text)
-  .map((caption) => {
-    const cleanText = applyCaps(escapeText(caption.text));
-    const anim = getAnimationTags(cleanText, animation);
-    const adjustedY = 960 - customY;
-    const pos = `\\pos(${customX},${adjustedY})`;
+  const formattedCaptions = captions
+    .filter(c => c.start && c.end && c.text)
+    .map((caption) => {
+      const cleanText = applyCaps(escapeText(caption.text));
+      const anim = getAnimationTags(cleanText, animation);
+      const adjustedY = 960 - customY; // ✅ Y-axis logic: 0=center, +750=up, -350=down
+      const pos = `\\pos(${customX},${adjustedY})`;
+      console.log("🧪 Animation tag preview:\n", `{${pos}${anim}}${cleanText}`);
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
+    })
+    .join('\n');
 
-    // ⬇️ INSERT THIS LINE BELOW
-    console.log("🧪 Animation tag preview:\n", `{${pos}${anim}}${cleanText}`);
-
-    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
-  })
-  .join('\n');
-
-  // ────────────────────────────────────────────────
-  // FILE OUTPUT
-  // ────────────────────────────────────────────────
   const content = style + formattedCaptions;
   await fs.promises.writeFile(filePath, content);
   console.log(`✅ Subtitle file written: ${filePath}`);
