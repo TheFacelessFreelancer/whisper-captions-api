@@ -93,7 +93,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   .filter(c => c.start && c.end && c.text)
   .map((caption) => {
     const cleanText = applyCaps(escapeText(caption.text));
-    console.log("🎯 Requested animation type:", animation); // ⬅️ ADD THIS LINE
+    console.log("🎯 Requested animation type:", animation);
     const anim = getAnimationTags(cleanText, animation);
 
       // ──────────────── X AND Y POSITIONING ────────────────
@@ -103,10 +103,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const pos = `\\an5\\pos(${adjustedX},${adjustedY})`; // center-aligned text block
       // ─────────────────────────────────────────────────────
 
-      console.log("🧪 Animation tag preview:\n", `{${pos}${anim}}${cleanText}`);
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
-    })
-    .join('\n');
+         console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
+    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
+  })
+  .join('\n');
 
   const content = style + formattedCaptions;
   await fs.promises.writeFile(filePath, content);
