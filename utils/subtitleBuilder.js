@@ -25,6 +25,7 @@
 import fs from 'fs';
 import path from 'path';
 import { hexToASS } from './colors.js';
+import { getAnimationTags } from './utils/animations.js';
 
 // ────────────────────────────────────────────────
 // MAIN EXPORT FUNCTION
