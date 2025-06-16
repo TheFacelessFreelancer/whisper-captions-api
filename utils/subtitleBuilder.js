@@ -89,11 +89,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   // ────────────────────────────────────────────────
   // FORMATTED CAPTIONS
   // ────────────────────────────────────────────────
-  const formattedCaptions = captions
-    .filter(c => c.start && c.end && c.text)
-    .map((caption) => {
-      const cleanText = applyCaps(escapeText(caption.text));
-      const anim = getAnimationTags(cleanText, animation);
+ const formattedCaptions = captions
+  .filter(c => c.start && c.end && c.text)
+  .map((caption) => {
+    const cleanText = applyCaps(escapeText(caption.text));
+    console.log("🎯 Requested animation type:", animation); // ⬅️ ADD THIS LINE
+    const anim = getAnimationTags(cleanText, animation);
 
       // ──────────────── X AND Y POSITIONING ────────────────
       const screenWidth = 980; // new width for 50px margin left and right
