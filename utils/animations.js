@@ -25,7 +25,7 @@ function typewriterAnimation(text) {
   return text
     .split('')
     .map((char, i) =>
-      `{\\alpha&HFF&\\t(${i * 30},${(i + 1) * 30},\\alpha&H00&)}${char}`
+      `{\\alpha&HFF&\\t(${i * 80},${(i + 1) * 80},\\alpha&H00&)}${char}`
     )
     .join('');
 }
