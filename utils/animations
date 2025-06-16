@@ -34,7 +34,9 @@ function typewriterAnimation(text) {
 function wordByWordAnimation(text) {
   return text
     .split(' ')
-    .map((word, i) => `{\\t(${i * 150},${(i + 1) * 150},\\alpha&HFF&)}` + word)
+    .map((word, i) =>
+      `{\\alpha&HFF&\\t(${i * 200},${(i + 1) * 200},\\alpha&H00&)}${word}`
+    )
     .join(' ');
 }
 
