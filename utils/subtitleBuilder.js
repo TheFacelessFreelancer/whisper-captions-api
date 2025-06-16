@@ -120,17 +120,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   // ────────────────────────────────────────────────
   // FORMATTED CAPTIONS
   // ────────────────────────────────────────────────
-  const formattedCaptions = captions
-    .filter(c => c.start && c.end && c.text)
-    .map((caption) => {
-      const cleanText = applyCaps(escapeText(caption.text));
-      const anim = getAnimationTags(cleanText, animation);
-      const adjustedX = 540 + customX;
-      const adjustedY = 960 - customY;
-      const pos = `\\an5\\pos(${adjustedX},${adjustedY})`;
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
-    })
-    .join('\n');
+ const formattedCaptions = captions
+  .filter(c => c.start && c.end && c.text)
+  .map((caption) => {
+    const cleanText = applyCaps(escapeText(caption.text));
+    const anim = getAnimationTags(cleanText, animation);
+    const adjustedY = 960 - customY;
+    const pos = `\\pos(${customX},${adjustedY})`;
+
+    // ⬇️ INSERT THIS LINE BELOW
+    console.log("🧪 Animation tag preview:\n", `{${pos}${anim}}${cleanText}`);
+
+    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
+  })
+  .join('\n');
 
   // ────────────────────────────────────────────────
   // FILE OUTPUT
