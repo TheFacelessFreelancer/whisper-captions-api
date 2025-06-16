@@ -87,29 +87,41 @@ export async function buildSubtitlesFile({
     }
   };
 
+  // ────────────────────────────────────────────────
+  // STYLE HEADER
+  // ────────────────────────────────────────────────
   const boxColorAss = box ? boxColor : '&H00000000';
   const style = `
 [Script Info]
 Title: Captions
 ScriptType: v4.00+
-PlayResX: 1080
+PlayResX: 980
 PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},${boxColorAss},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,1,${outlineWidth},${shadow},7,50,50,50,1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},${boxColorAss},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,1,${outlineWidth},${shadow},7,10,10,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
+  // ────────────────────────────────────────────────
+  // FORMATTED CAPTIONS
+  // ────────────────────────────────────────────────
   const formattedCaptions = captions
     .filter(c => c.start && c.end && c.text)
     .map((caption) => {
       const cleanText = applyCaps(escapeText(caption.text));
       const anim = getAnimationTags(cleanText, animation);
-      const adjustedY = 960 - customY; // ✅ Y-axis logic: 0=center, +750=up, -350=down
-      const pos = `\\pos(${customX},${adjustedY})`;
+
+      // ──────────────── X AND Y POSITIONING ────────────────
+      const screenWidth = 980; // new width for 50px margin left and right
+      const adjustedX = screenWidth / 2 + customX; // 0=center, positive=right
+      const adjustedY = 960 - customY; // 0=center, positive=up
+      const pos = `\\an5\\pos(${adjustedX},${adjustedY})`; // center-aligned text block
+      // ─────────────────────────────────────────────────────
+
       console.log("🧪 Animation tag preview:\n", `{${pos}${anim}}${cleanText}`);
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${anim}}${cleanText}`;
     })
