@@ -29,15 +29,13 @@ function typewriterAnimation(text) {
 }
 
 // ────────────────────────────────────────────────
-// WORD-BY-WORD ANIMATION (using \k karaoke tags)
+// WORD-BY-WORD ANIMATION
 // ────────────────────────────────────────────────
-function wordByWordAnimation(text, start, end) {
-  const durationMs = (parseAssTime(end) - parseAssTime(start)) * 1000;
-  const words = text.trim().split(/\s+/);
-  const perWordMs = Math.floor(durationMs / words.length);
-  const perWordK = Math.max(1, Math.round(perWordMs / 10)); // \k = 10ms
-
-  return words.map(word => `{\\k${perWordK}}${word}`).join(' ');
+function wordByWordAnimation(text) {
+  return text
+    .split(' ')
+    .map((word, i) => `{\\t(${i * 200},${(i + 1) * 200},\\alpha&H00&)}${word}`)
+    .join(' ');
 }
 
 // ────────────────────────────────────────────────
