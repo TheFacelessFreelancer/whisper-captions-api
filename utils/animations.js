@@ -94,6 +94,10 @@ export function getAnimationTags(text, type, start, end) {
       return bounceAnimation();
     case 'pop':
       return popAnimation();
+    case 'rise':
+      return riseAnimation();
+    case 'baseline':
+      return bacelineAnimation();
     default:
       return '';
   }
