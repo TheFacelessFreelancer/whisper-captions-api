@@ -86,74 +86,100 @@ Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},$
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // ────────────────────────────────────────────────
-  // FORMATTED CAPTIONS
-  // ────────────────────────────────────────────────
-  const formattedCaptions = captions
-    .filter(c => c.start && c.end && c.text) // ✅ Filter out incomplete captions
-    .map((caption) => {
-  const rawText = caption.text;
+// ────────────────────────────────────────────────
+// 6. FORMATTED CAPTIONS
+// ────────────────────────────────────────────────
+const formattedCaptions = captions
+  .filter(c => c.start && c.end && c.text)
+  .flatMap((caption) => {
+    const rawText = caption.text;
 
-  const forceSingleLineAnimations = ['bounce', 'pop', 'rise', 'baseline'];
-  const shouldForceSingleLine = forceSingleLineAnimations.includes(animation);
+    // ────────────────────────────────────────────────
+    // 6.1: Animation Modes That Require Forced Line Capping
+    // ────────────────────────────────────────────────
+    const forceSingleLineAnimations = ['bounce', 'pop', 'rise', 'baseline'];
+    const shouldForceSingleLine = forceSingleLineAnimations.includes(animation);
 
-  // Estimate max characters per line based on font settings
-  const avgCharWidth = fontSize * 0.55;
-  const usableWidth = 980 - boxPadding * 2 - outlineWidth * 2;
-  const maxChars = Math.floor(usableWidth / avgCharWidth);
+    // ────────────────────────────────────────────────
+    // 6.2: Character Width Estimation and Max Line Length
+    // ────────────────────────────────────────────────
+    const avgCharWidth = fontSize * 0.55;
+    const usableWidth = 980 - boxPadding * 2 - outlineWidth * 2;
+    const maxChars = Math.floor(usableWidth / avgCharWidth);
 
-  // Optional: Clean \n if single-line animation
-  const cleanedText = shouldForceSingleLine
-    ? rawText.replace(/\n/g, ' ')
-    : rawText;
+    // ────────────────────────────────────────────────
+    // 6.3: Clean Line Breaks Only if Single-Line is Forced
+    // ────────────────────────────────────────────────
+    const cleanedText = shouldForceSingleLine
+      ? rawText.replace(/\n/g, ' ')
+      : rawText;
 
-  // Escape and apply caps
-  const cleanText = applyCaps(escapeText(cleanedText));
+    // ────────────────────────────────────────────────
+    // 6.4: Apply Capitalization and Escape Curly Braces
+    // ────────────────────────────────────────────────
+    const cleanText = applyCaps(escapeText(cleanedText));
 
-  // Handle animation tag
-  const anim = getAnimationTags(cleanText, animation);
+    // ────────────────────────────────────────────────
+    // 6.5: Animation Tags Based on Type
+    // ────────────────────────────────────────────────
+    const anim = getAnimationTags(cleanText, animation);
 
-  // Positioning
-  const screenWidth = 980;
-  const adjustedX = screenWidth / 2 + customX;
-  const adjustedY = 1920 / 2 - customY;
-  const wrapOverride = shouldForceSingleLine ? '\\q2' : '';
-  const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
+    // ────────────────────────────────────────────────
+    // 6.6: Position Tag Calculation (\an5 + \pos(x,y))
+    // ────────────────────────────────────────────────
+    const screenWidth = 980;
+    const adjustedX = screenWidth / 2 + customX;
+    const adjustedY = 1920 / 2 - customY;
+    const wrapOverride = shouldForceSingleLine ? '\\q2' : '';
+    const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
 
-  // Line chunking for long lines
-  const splitTextIntoLines = (text, maxLen) => {
-    const words = text.split(' ');
-    const lines = [];
-    let line = '';
-    for (const word of words) {
-      if ((line + ' ' + word).trim().length <= maxLen) {
-        line += (line ? ' ' : '') + word;
-      } else {
-        lines.push(line);
-        line = word;
+    // ────────────────────────────────────────────────
+    // 6.7: Line Splitting Helper (for visual line capping)
+    // ────────────────────────────────────────────────
+    const splitTextIntoLines = (text, maxLen) => {
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for (const word of words) {
+        if ((line + ' ' + word).trim().length <= maxLen) {
+          line += (line ? ' ' : '') + word;
+        } else {
+          lines.push(line);
+          line = word;
+        }
       }
+      if (line) lines.push(line);
+      return lines;
+    };
+
+    // ────────────────────────────────────────────────
+    // 6.8: Inline Mode Handling (e.g. word-by-word / typewriter)
+    // ────────────────────────────────────────────────
+    const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
+    if (includesTextInline) {
+      return [`Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${anim}`];
     }
-    if (line) lines.push(line);
-    return lines;
-  };
 
-  // Final text assembly
-  const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
-  let finalText;
+    // ────────────────────────────────────────────────
+    // 6.9: Forced Single-Line Chunk Mode (Bounce, etc.)
+    // ────────────────────────────────────────────────
+    if (shouldForceSingleLine) {
+      const chunks = splitTextIntoLines(cleanText, maxChars);
+      return chunks.map((line) =>
+        `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${line}`
+      );
+    }
 
-  if (includesTextInline) {
-    finalText = anim;
-  } else if (shouldForceSingleLine) {
-    const chunks = splitTextIntoLines(cleanText, maxChars);
-    finalText = chunks.map(line => `{${pos}}${anim}${line}`).join('\\N');
-  } else {
-    finalText = `${anim}{${pos}}${cleanText}`;
-  }
+    // ────────────────────────────────────────────────
+    // 6.10: Default Return for Multiline or Fade Captions
+    // ────────────────────────────────────────────────
+    return [`Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${anim}{${pos}}${cleanText}`];
+  })
+  .join('\n');
 
-  return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${finalText}`;
-})
-    .join('\n');
-
+// ────────────────────────────────────────────────
+// 7: File Output
+// ────────────────────────────────────────────────
  const content = style + formattedCaptions;
   await fs.promises.writeFile(filePath, content);
   console.log(`✅ Subtitle file written: ${filePath}`);
