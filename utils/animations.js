@@ -43,20 +43,36 @@ function wordByWordAnimation(text) {
 }
 
 // ────────────────────────────────────────────────
-// BOUNCE ANIMATION (CLEAN VERSION - no rotation)
+// BOUNCE ANIMATION (4-PHASE SPRING ENTRY)
 // ────────────────────────────────────────────────
 /**
  * Description:
- *   Creates a bounce effect from below.
- *   The text scales from small (80%) to full size (100%)
- *   to mimic a bounce from the bottom.
+ *   Simulates a springy bounce from below with elastic easing.
+ *   Text starts squashed vertically, overshoots upward, rebounds,
+ *   and settles smoothly at full size.
+ *   Includes a soft fade-in for smoother appearance.
  *
  * ASS Tag Logic:
- *   \t(0,300,\fscy80) \t(300,600,\fscy100)
+ *   \alpha&HFF&                      ; fully transparent at start
+ *   \t(0,150,\fscy50)                ; squash vertically to 50%
+ *   \t(150,300,\fscy115)             ; bounce above final size (115%)
+ *   \t(300,450,\fscy90)              ; rebound below final size (90%)
+ *   \t(450,600,\fscy100)             ; settle at 100%
+ *   \t(0,100,\alpha&H00&)            ; fade-in to visible over 100ms
+ *
+ * Total duration: ~600ms
  */
 function bounceAnimation() {
-  return `{\\t(0,300,\\fscy80)\\t(300,600,\\fscy100)}`;
+  return (
+    '\\alpha&HFF&' +
+    '\\t(0,150,\\fscy50)' +     // squashed start
+    '\\t(150,300,\\fscy115)' +  // overshoot upward
+    '\\t(300,450,\\fscy90)' +   // rebound downward
+    '\\t(450,600,\\fscy100)' +  // settle at full scale
+    '\\t(0,100,\\alpha&H00&)'   // fade in smoothly
+  );
 }
+
 
 // ────────────────────────────────────────────────
 // POP ANIMATION
