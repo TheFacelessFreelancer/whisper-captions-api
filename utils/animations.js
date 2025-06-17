@@ -45,8 +45,18 @@ function wordByWordAnimation(text) {
 // ────────────────────────────────────────────────
 // BOUNCE ANIMATION
 // ────────────────────────────────────────────────
+/**
+ * Description:
+ *   Applies a playful bounce effect using rotation and scale.
+ *   The entire caption appears with a slight rotation and upscale,
+ *   then bounces back to normal.
+ *
+ * ASS Tag Logic:
+ *   \t(start1, end1, \frzX \fscxY \fscyY)
+ *   \t(start2, end2, \frz0 \fscx100 \fscy100)
+ */
 function bounceAnimation() {
-  return `\\t(0,500,\\frz5)\\t(500,1000,\\frz0)`;
+  return `\\t(0,300,\\frz5\\fscx110\\fscy110)\\t(300,600,\\frz0\\fscx100\\fscy100)`;
 }
 
 // ────────────────────────────────────────────────
