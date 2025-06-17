@@ -56,7 +56,7 @@ function wordByWordAnimation(text) {
  *   \t(start2, end2, \frz0 \fscx100 \fscy100)
  */
 function bounceAnimation() {
-  return `\\t(0,300,\\frz5\\fscx110\\fscy110)\\t(300,600,\\frz0\\fscx100\\fscy100)`;
+  return `{\\t(0,300,\\frz5\\fscx110\\fscy110)\\t(300,600,\\frz0\\fscx100\\fscy100)}`;
 }
 
 // ────────────────────────────────────────────────
