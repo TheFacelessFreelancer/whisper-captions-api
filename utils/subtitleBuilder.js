@@ -198,7 +198,7 @@ if (shouldForceSingleLine) {
     if (animation === 'fall') {
       const yStart = adjustedY - 100;
       const yEnd = adjustedY;
-      return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${adjustedX},${yStart},${adjustedX},${yEnd},0,250)${anim}}${line}`;
+      return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${adjustedX},${yStart},${adjustedX},${yEnd},0,150)${anim}}${line}`;
     }
 
     // For other animations (rise, pop, etc), use static pos
