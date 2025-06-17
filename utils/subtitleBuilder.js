@@ -92,37 +92,66 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const formattedCaptions = captions
     .filter(c => c.start && c.end && c.text) // ✅ Filter out incomplete captions
     .map((caption) => {
-      const rawText = caption.text;
+  const rawText = caption.text;
 
-      // CLEAN TEXT LINEBREAKS
-      const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
-        ? rawText.replace(/\n/g, ' ') // ✅ Force single-line only for specified animations
-        : rawText;
+  const forceSingleLineAnimations = ['bounce', 'pop', 'rise', 'baseline'];
+  const shouldForceSingleLine = forceSingleLineAnimations.includes(animation);
 
-      // ESCAPE & CAPS
-      const cleanText = applyCaps(escapeText(cleanedText)); // ✅ Apply CAPS + escape characters
+  // Estimate max characters per line based on font settings
+  const avgCharWidth = fontSize * 0.55;
+  const usableWidth = 980 - boxPadding * 2 - outlineWidth * 2;
+  const maxChars = Math.floor(usableWidth / avgCharWidth);
 
-      //  🎞️ ANIMATION TAG      
-      console.log("🎯 Requested animation type:", animation);
-      const anim = getAnimationTags(cleanText, animation); // ✅ Get animation tags
+  // Optional: Clean \n if single-line animation
+  const cleanedText = shouldForceSingleLine
+    ? rawText.replace(/\n/g, ' ')
+    : rawText;
 
-      // 📍 PSOTION & ALIGNMENT
-      const screenWidth = 980;                         // total screen width
-      const adjustedX = screenWidth / 2 + customX;     // horizontal offset
-      const adjustedY = 960 - customY;                 // vertical offset
-      const wrapOverride = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
-        ? '\\q2' // ✅ Force no-wrapping for specific animations
-        : '';    // 🟰 allow default wrapping for others
-      const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`; // ✅ Final positioning
+  // Escape and apply caps
+  const cleanText = applyCaps(escapeText(cleanedText));
 
-      // FINAL TEXT ASSEMBLY
-      const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
-      const finalText = includesTextInline ? anim : `${anim}${cleanText}`;
+  // Handle animation tag
+  const anim = getAnimationTags(cleanText, animation);
 
-      // DEBUG & RETURN
-      console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${finalText}`;
-    })
+  // Positioning
+  const screenWidth = 980;
+  const adjustedX = screenWidth / 2 + customX;
+  const adjustedY = 1920 / 2 - customY;
+  const wrapOverride = shouldForceSingleLine ? '\\q2' : '';
+  const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
+
+  // Line chunking for long lines
+  const splitTextIntoLines = (text, maxLen) => {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      if ((line + ' ' + word).trim().length <= maxLen) {
+        line += (line ? ' ' : '') + word;
+      } else {
+        lines.push(line);
+        line = word;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+
+  // Final text assembly
+  const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
+  let finalText;
+
+  if (includesTextInline) {
+    finalText = anim;
+  } else if (shouldForceSingleLine) {
+    const chunks = splitTextIntoLines(cleanText, maxChars);
+    finalText = chunks.map(line => `{${pos}}${anim}${line}`).join('\\N');
+  } else {
+    finalText = `${anim}{${pos}}${cleanText}`;
+  }
+
+  return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${finalText}`;
+})
     .join('\n');
 
  const content = style + formattedCaptions;
