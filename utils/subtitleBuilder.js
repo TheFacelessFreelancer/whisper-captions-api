@@ -86,52 +86,42 @@ Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},$
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-// ────────────────────────────────────────────────
-// FORMATTED CAPTIONS
-// ────────────────────────────────────────────────
-const formattedCaptions = captions
-  .filter(c => c.start && c.end && c.text) // ✅ Filter out incomplete captions
-  .map((caption) => {
-    const rawText = caption.text;
+  // ────────────────────────────────────────────────
+  // FORMATTED CAPTIONS
+  // ────────────────────────────────────────────────
+  const formattedCaptions = captions
+    .filter(c => c.start && c.end && c.text) // ✅ Filter out incomplete captions
+    .map((caption) => {
+      const rawText = caption.text;
 
-    // ✅ Force single-line text for specific animations by removing newline characters
-    const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
-      ? rawText.replace(/\n/g, ' ')
-      : rawText;
+      // CLEAN TEXT LINEBREAKS
+      const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
+        ? rawText.replace(/\n/g, ' ') // ✅ Force single-line only for specified animations
+        : rawText;
 
-    // ✅ Apply capitalization + escape ASS special characters
-    const cleanText = applyCaps(escapeText(cleanedText));
+      // ESCAPE & CAPS
+      const cleanText = applyCaps(escapeText(cleanedText)); // ✅ Apply CAPS + escape characters
 
-    console.log("🎯 Requested animation type:", animation);
+      //  🎞️ ANIMATION TAG      
+      console.log("🎯 Requested animation type:", animation);
+      const anim = getAnimationTags(cleanText, animation); // ✅ Get animation tags
 
-    // ✅ Generate animation tags from animations.js logic
-    const anim = getAnimationTags(cleanText, animation);
+      // 📍 PSOTION & ALIGNMENT
+      const screenWidth = 980;                         // total screen width
+      const adjustedX = screenWidth / 2 + customX;     // horizontal offset
+      const adjustedY = 960 - customY;                 // vertical offset
+      const wrapOverride = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
+        ? '\\q2' // ✅ Force no-wrapping for specific animations
+        : '';    // 🟰 allow default wrapping for others
+      const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`; // ✅ Final positioning
 
-    // ──────────────── X AND Y POSITIONING ────────────────
-    const screenWidth = 980;                         // total screen width
-    const adjustedX = screenWidth / 2 + customX;     // horizontal offset
-    const adjustedY = 960 - customY;                 // vertical offset
-    // ✅ Force no-wrap (\q2) only for selected animations
-    const wrapOverride = ['bounce', 'pop', 'rise', 'baseline'].includes(animation) ? '\\q2' : '';
-    // ✅ Combine alignment, optional wrap mode, and position
-    const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
-    // ─────────────────────────────────────────────────────
+      // FINAL TEXT ASSEMBLY
+      const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
+      const finalText = includesTextInline ? anim : `${anim}${cleanText}`;
 
-    // ✅ Some animations already include the full caption text inline (e.g. word-by-word)
-    const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
-    const finalText = includesTextInline ? anim : `${anim}${cleanText}`;
-
-    console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
-
-    // ✅ Final subtitle dialogue line in ASS format
-    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${finalText}`;
-  })
-  .join('\n');
-
-// ✅ Combine the style header and all formatted captions into the .ASS file
-const content = style + formattedCaptions;
-await fs.promises.writeFile(filePath, content);
-console.log(`✅ Subtitle file written: ${filePath}`);
-return filePath;
-}
+      // DEBUG & RETURN
+      console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${finalText}`;
+    })
+    .join('\n');
 
