@@ -97,7 +97,7 @@ const formattedCaptions = captions
     // ────────────────────────────────────────────────
     // 6.1: Animation Modes That Require Forced Line Capping
     // ────────────────────────────────────────────────
-    const forceSingleLineAnimations = ['fall', 'pop', 'rise', 'baseline'];
+    const forceSingleLineAnimations = ['fall', 'rise', 'baselineup', 'baselinedown', 'panright', 'panleft'];
     const shouldForceSingleLine = forceSingleLineAnimations.includes(animation);
 
     // ────────────────────────────────────────────────
@@ -160,8 +160,8 @@ const formattedCaptions = captions
       return [`Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${anim}`];
     }
 
-  // ────────────────────────────────────────────────
-// 6.9: Forced Single-Line Chunk Mode (Fall, Pop, Rise, etc.)
+// ────────────────────────────────────────────────
+// 6.9: Forced Single-Line Chunk Mode (Fall, Rise, Baseline Up, etc.)
 // ────────────────────────────────────────────────
 if (shouldForceSingleLine) {
   const parseTime = (str) => {
@@ -186,14 +186,24 @@ if (shouldForceSingleLine) {
   const startMs = parseTime(caption.start);
   const endMs = parseTime(caption.end);
   const totalDuration = endMs - startMs;
+
   const chunks = splitTextIntoLines(cleanText, maxChars);
-  const chunkDuration = Math.floor(totalDuration / chunks.length);
+
+  // Proportional chunk durations based on text length
+  const totalChars = cleanText.length;
+  const chunkDurations = chunks.map(line => {
+    const ratio = line.length / totalChars;
+    return Math.max(100, Math.floor(totalDuration * ratio)); // minimum 100ms
+  });
+
+  let offset = startMs;
 
   return chunks.map((line, i) => {
-    const chunkStart = startMs + i * chunkDuration;
+    const chunkStart = offset;
     const chunkEnd = i === chunks.length - 1
       ? endMs
-      : chunkStart + chunkDuration;
+      : chunkStart + chunkDurations[i];
+    offset += chunkDurations[i];
 
     if (animation === 'fall') {
       const yStart = adjustedY - 100;
@@ -201,11 +211,10 @@ if (shouldForceSingleLine) {
       return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${adjustedX},${yStart},${adjustedX},${yEnd},0,150)${anim}}${line}`;
     }
 
-    // For other animations (rise, pop, etc), use static pos
+    // Other single-line animations
     return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`;
   });
 }
-
 
     // ────────────────────────────────────────────────
     // 6.10: Default Return for Multiline or Fade Captions
