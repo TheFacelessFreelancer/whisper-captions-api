@@ -223,8 +223,10 @@ const formattedCaptions = captions
     // ────────────────────────────────────────────────
     // 6.10: Default Return for Multiline or Fade Captions
     // ────────────────────────────────────────────────
-    return [`Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${anim}{${pos}}${cleanText}`];
-  })
+      return [
+    `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`
+  ];
+  });
   .join('\n');
 
 // ────────────────────────────────────────────────
