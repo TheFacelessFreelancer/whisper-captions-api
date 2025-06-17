@@ -103,8 +103,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const pos = `\\an5\\pos(${adjustedX},${adjustedY})`; // center-aligned text block
       // ─────────────────────────────────────────────────────
 
+    // Safely append text only for styles that don’t include it
+    const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
+    const finalText = includesTextInline ? anim : `${anim}${cleanText}`;
+
          console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
-    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
+    return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${finalText}`;
   })
   .join('\n');
 
