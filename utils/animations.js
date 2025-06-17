@@ -53,26 +53,11 @@ function wordByWordAnimation(text) {
  *   Includes a soft fade-in for smoother appearance.
  *
  * ASS Tag Logic:
- *   \alpha&HFF&                      ; fully transparent at start
- *   \t(0,150,\fscy50)                ; squash vertically to 50%
- *   \t(150,300,\fscy115)             ; bounce above final size (115%)
- *   \t(300,450,\fscy90)              ; rebound below final size (90%)
- *   \t(450,600,\fscy100)             ; settle at 100%
- *   \t(0,100,\alpha&H00&)            ; fade-in to visible over 100ms
- *
- * Total duration: ~600ms
+ *   {\alpha&HFF&\t(0,150,\fscy50)\t(150,300,\fscy115)\t(300,450,\fscy90)\t(450,600,\fscy100)\t(0,100,\alpha&H00&)}
  */
 function bounceAnimation() {
-  return (
-    '\\alpha&HFF&' +
-    '\\t(0,150,\\fscy50)' +     // squashed start
-    '\\t(150,300,\\fscy115)' +  // overshoot upward
-    '\\t(300,450,\\fscy90)' +   // rebound downward
-    '\\t(450,600,\\fscy100)' +  // settle at full scale
-    '\\t(0,100,\\alpha&H00&)'   // fade in smoothly
-  );
+  return `{\\alpha&HFF&\\t(0,150,\\fscy50)\\t(150,300,\\fscy115)\\t(300,450,\\fscy90)\\t(450,600,\\fscy100)\\t(0,100,\\alpha&H00&)}`;
 }
-
 
 // ────────────────────────────────────────────────
 // POP ANIMATION
