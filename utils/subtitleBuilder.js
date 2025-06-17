@@ -92,7 +92,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
  const formattedCaptions = captions
   .filter(c => c.start && c.end && c.text)
   .map((caption) => {
-    const cleanText = applyCaps(escapeText(caption.text));
+    const rawText = caption.text;
+const cleanedText = ['bounce', 'pop'].includes(animation)
+  ? rawText.replace(/\n/g, ' ')
+  : rawText;
+    const cleanText = applyCaps(escapeText(cleanedText)); // ✅ CORRECT
+;
     console.log("🎯 Requested animation type:", animation);
     const anim = getAnimationTags(cleanText, animation);
 
