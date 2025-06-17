@@ -97,7 +97,7 @@ const formattedCaptions = captions
     // ────────────────────────────────────────────────
     // 6.1: Animation Modes That Require Forced Line Capping
     // ────────────────────────────────────────────────
-    const forceSingleLineAnimations = ['bounce', 'pop', 'rise', 'baseline'];
+    const forceSingleLineAnimations = ['fall', 'pop', 'rise', 'baseline'];
     const shouldForceSingleLine = forceSingleLineAnimations.includes(animation);
 
     // ────────────────────────────────────────────────
@@ -160,8 +160,8 @@ const formattedCaptions = captions
       return [`Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,${anim}`];
     }
 
-    // ────────────────────────────────────────────────
-// 6.9: Forced Single-Line Chunk Mode (Bounce, etc.)
+  // ────────────────────────────────────────────────
+// 6.9: Forced Single-Line Chunk Mode (Fall, Pop, Rise, etc.)
 // ────────────────────────────────────────────────
 if (shouldForceSingleLine) {
   const parseTime = (str) => {
@@ -189,40 +189,23 @@ if (shouldForceSingleLine) {
   const chunks = splitTextIntoLines(cleanText, maxChars);
   const chunkDuration = Math.floor(totalDuration / chunks.length);
 
-  return chunks.flatMap((line, i) => {
+  return chunks.map((line, i) => {
     const chunkStart = startMs + i * chunkDuration;
     const chunkEnd = i === chunks.length - 1
       ? endMs
       : chunkStart + chunkDuration;
 
-    // Define bounce phase timings
-    const phase1Start = chunkStart;
-    const phase1End = chunkStart + 180;
-
-    const phase2Start = phase1End;
-    const phase2End = phase1End + 140;
-
-    const phase3Start = phase2End;
-    const phase3End = chunkEnd;
-
-    // Only apply 3-phase bounce if animation is exactly "bounce"
-    if (animation === 'bounce') {
-      return [
-        // Phase 1 — hard drop from above with fade
-        `Dialogue: 0,${formatTime(phase1Start)},${formatTime(phase1End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY - 100})\\alpha&HFF&\\t(0,100,\\alpha&H00&)}${line}`,
-        // Phase 2 — bounce upward
-        `Dialogue: 0,${formatTime(phase2Start)},${formatTime(phase2End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY - 50})}${line}`,
-        // Phase 3 — settle at resting position
-        `Dialogue: 0,${formatTime(phase3Start)},${formatTime(phase3End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY})}${line}`,
-      ];
+    if (animation === 'fall') {
+      const yStart = adjustedY - 100;
+      const yEnd = adjustedY;
+      return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${adjustedX},${yStart},${adjustedX},${yEnd},0,250)${anim}}${line}`;
     }
 
-    // For other animations (rise, pop, etc), use single line
-    return [
-      `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`
-    ];
+    // For other animations (rise, pop, etc), use static pos
+    return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`;
   });
 }
+
 
     // ────────────────────────────────────────────────
     // 6.10: Default Return for Multiline or Fade Captions
