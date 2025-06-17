@@ -129,3 +129,4 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   await fs.promises.writeFile(filePath, content);
   console.log(`✅ Subtitle file written: ${filePath}`);
   return filePath;
+}
