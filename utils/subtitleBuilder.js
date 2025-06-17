@@ -96,8 +96,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 const cleanedText = ['bounce', 'pop'].includes(animation)
   ? rawText.replace(/\n/g, ' ')
   : rawText;
-    const cleanText = applyCaps(escapeText(cleanedText)); // ✅ CORRECT
-;
+    const cleanText = applyCaps(escapeText(cleanedText)); 
     console.log("🎯 Requested animation type:", animation);
     const anim = getAnimationTags(cleanText, animation);
 
