@@ -86,38 +86,52 @@ Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},$
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // ────────────────────────────────────────────────
-  // FORMATTED CAPTIONS
-  // ────────────────────────────────────────────────
- const formattedCaptions = captions
-  .filter(c => c.start && c.end && c.text)
+// ────────────────────────────────────────────────
+// FORMATTED CAPTIONS
+// ────────────────────────────────────────────────
+const formattedCaptions = captions
+  .filter(c => c.start && c.end && c.text) // ✅ Filter out incomplete captions
   .map((caption) => {
     const rawText = caption.text;
-const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
-  ? rawText.replace(/\n/g, ' ')
-  : rawText;
-    const cleanText = applyCaps(escapeText(cleanedText)); 
+
+    // ✅ Force single-line text for specific animations by removing newline characters
+    const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
+      ? rawText.replace(/\n/g, ' ')
+      : rawText;
+
+    // ✅ Apply capitalization + escape ASS special characters
+    const cleanText = applyCaps(escapeText(cleanedText));
+
     console.log("🎯 Requested animation type:", animation);
+
+    // ✅ Generate animation tags from animations.js logic
     const anim = getAnimationTags(cleanText, animation);
 
-      // ──────────────── X AND Y POSITIONING ────────────────
-      const screenWidth = 980; // new width for 50px margin left and right
-      const adjustedX = screenWidth / 2 + customX; // 0=center, positive=right
-      const adjustedY = 960 - customY; // 0=center, positive=up
-      const pos = `\\an5\\pos(${adjustedX},${adjustedY})`; // center-aligned text block
-      // ─────────────────────────────────────────────────────
+    // ──────────────── X AND Y POSITIONING ────────────────
+    const screenWidth = 980;                         // total screen width
+    const adjustedX = screenWidth / 2 + customX;     // horizontal offset
+    const adjustedY = 960 - customY;                 // vertical offset
+    // ✅ Force no-wrap (\q2) only for selected animations
+    const wrapOverride = ['bounce', 'pop', 'rise', 'baseline'].includes(animation) ? '\\q2' : '';
+    // ✅ Combine alignment, optional wrap mode, and position
+    const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
+    // ─────────────────────────────────────────────────────
 
-    // Safely append text only for styles that don’t include it
+    // ✅ Some animations already include the full caption text inline (e.g. word-by-word)
     const includesTextInline = ['word-by-word', 'typewriter'].includes(animation);
     const finalText = includesTextInline ? anim : `${anim}${cleanText}`;
 
-         console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
+    console.log("🧪 Animation tag preview:\n", `{${pos}}${anim}`);
+
+    // ✅ Final subtitle dialogue line in ASS format
     return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${finalText}`;
   })
   .join('\n');
 
-  const content = style + formattedCaptions;
-  await fs.promises.writeFile(filePath, content);
-  console.log(`✅ Subtitle file written: ${filePath}`);
-  return filePath;
+// ✅ Combine the style header and all formatted captions into the .ASS file
+const content = style + formattedCaptions;
+await fs.promises.writeFile(filePath, content);
+console.log(`✅ Subtitle file written: ${filePath}`);
+return filePath;
 }
+
