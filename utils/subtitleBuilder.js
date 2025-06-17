@@ -189,14 +189,36 @@ const formattedCaptions = captions
       const chunks = splitTextIntoLines(cleanText, maxChars);
       const chunkDuration = Math.floor(totalDuration / chunks.length);
 
-      return chunks.map((line, i) => {
-        const chunkStart = startMs + i * chunkDuration;
-        const chunkEnd = i === chunks.length - 1
-          ? endMs
-          : chunkStart + chunkDuration;
-        return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`;
-      });
-    }
+      return chunks.flatMap((line, i) => {
+  const chunkStart = startMs + i * chunkDuration;
+  const chunkEnd = i === chunks.length - 1
+    ? endMs
+    : chunkStart + chunkDuration;
+
+  const phase1Start = chunkStart;
+  const phase1End = chunkStart + 120;
+
+  const phase2Start = phase1End;
+  const phase2End = chunkStart + 200;
+
+  const phase3Start = phase2End;
+  const phase3End = chunkEnd;
+
+  // Only apply 3-phase bounce if animation is exactly "bounce"
+  if (animation === 'bounce') {
+    return [
+      `Dialogue: 0,${formatTime(phase1Start)},${formatTime(phase1End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY - 50})\\alpha&HFF&\\t(0,100,\\alpha&H00&)}${line}`,
+      `Dialogue: 0,${formatTime(phase2Start)},${formatTime(phase2End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY - 25})}${line}`,
+      `Dialogue: 0,${formatTime(phase3Start)},${formatTime(phase3End)},Default,,0,0,0,,{\\an5\\pos(${adjustedX},${adjustedY})}${line}`,
+    ];
+  }
+
+  // For other animations (rise, pop, etc), use single line
+  return [
+    `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`
+  ];
+});
+
 
     // ────────────────────────────────────────────────
     // 6.10: Default Return for Multiline or Fade Captions
