@@ -226,7 +226,7 @@ const formattedCaptions = captions
       return [
     `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`
   ];
-  });
+  };
   .join('\n');
 
 // ────────────────────────────────────────────────
