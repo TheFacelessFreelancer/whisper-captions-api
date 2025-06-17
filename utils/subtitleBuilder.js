@@ -93,7 +93,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   .filter(c => c.start && c.end && c.text)
   .map((caption) => {
     const rawText = caption.text;
-const cleanedText = ['bounce', 'pop'].includes(animation)
+const cleanedText = ['bounce', 'pop', 'rise', 'baseline'].includes(animation)
   ? rawText.replace(/\n/g, ' ')
   : rawText;
     const cleanText = applyCaps(escapeText(cleanedText)); 
