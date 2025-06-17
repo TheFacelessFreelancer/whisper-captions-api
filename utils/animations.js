@@ -5,8 +5,12 @@
  * - Fade
  * - Typewriter (character-by-character)
  * - Word-by-word (updated using \k karaoke tags)
- * - Bounce
- * - Pop
+ * - Fall
+ * - Rise
+ * - Baseline Up
+ * - Baseline Down
+ * - Pan Right
+ * - Pan Left
  *
  * All animation blocks are modular and independently testable.
  */
