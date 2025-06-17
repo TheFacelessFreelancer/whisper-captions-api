@@ -90,14 +90,18 @@ export function getAnimationTags(text, type, start, end) {
       return typewriterAnimation(text);
     case 'word-by-word':
       return wordByWordAnimation(text, start, end);
-    case 'bounce':
-      return bounceAnimation();
-    case 'pop':
-      return popAnimation();
+    case 'fall':
+      return fallAnimation();
     case 'rise':
       return riseAnimation();
-    case 'baseline':
-      return bacelineAnimation();
+    case 'baselineup':
+      return baselineupAnimation();
+    case 'baselinedown':
+      return baselinedownAnimation();
+      case 'panright':
+      return panrightAnimation();
+      case 'panleft':
+      return panleftAnimation();
     default:
       return '';
   }
