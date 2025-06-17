@@ -63,11 +63,23 @@ function fallAnimation() {
 }
 
 // ────────────────────────────────────────────────
-// POP ANIMATION
+// RISE ANIMATION (One-phase upward motion)
 // ────────────────────────────────────────────────
-function popAnimation() {
-  return `\\t(0,200,\\fscx130\\fscy130)\\t(200,400,\\fscx100\\fscy100)`;
+/**
+ * Description:
+ *   Subtitle text rises from 100px below its final position
+ *   and fades in as it ascends. It’s the exact inverse of the Fall animation.
+ *
+ * ASS Tag Logic:
+ *   \alpha&HFF&                      ; fully transparent at start
+ *   \t(0,100,\alpha&H00&)           ; fade in over 100ms
+ *
+ * Motion is handled via \move(...) externally in subtitleBuilder.js
+ */
+function riseAnimation() {
+  return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
+
 
 // ────────────────────────────────────────────────
 // TIME PARSER: ASS → seconds
