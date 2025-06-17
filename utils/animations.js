@@ -43,23 +43,19 @@ function wordByWordAnimation(text) {
 }
 
 // ────────────────────────────────────────────────
-// BOUNCE ANIMATION (IMPACT DROP STYLE)
+// FALL ANIMATION (One-phase drop from above)
 // ────────────────────────────────────────────────
 /**
  * Description:
- *   Simulates an impact bounce where text falls from above,
- *   slams into position, bounces upward slightly, and then settles.
- *   Fade-in starts during the fall for a smoother entry.
+ *   A fast fall-in animation where text fades in while dropping
+ *   from 100px above its final position. Uses \move() and \alpha tags.
  *
- * ASS Tag Logic:
- *   {\alpha&HFF&                      ; invisible start
- *    \t(0,100,\alpha&H00&)           ; fade in
- *    \t(0,120,\fscy140)              ; downward impact
- *    \t(120,180,\fscy85)             ; upward rebound
- *    \t(180,260,\fscy100)}           ; settle at 100%
+ * ASS Tag Logic (combined with \move externally):
+ *   \alpha&HFF&           ; invisible at start
+ *   \t(0,100,\alpha&H00&) ; fade in over 100ms
  */
-function bounceAnimation() {
-  return `{\\alpha&HFF&\\t(0,100,\\alpha&H00&)\\t(0,120,\\fscy140)\\t(120,180,\\fscy85)\\t(180,260,\\fscy100)}`;
+function fallAnimation() {
+  return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
 
 // ────────────────────────────────────────────────
