@@ -125,3 +125,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     })
     .join('\n');
 
+ const content = style + formattedCaptions;
+  await fs.promises.writeFile(filePath, content);
+  console.log(`✅ Subtitle file written: ${filePath}`);
+  return filePath;
