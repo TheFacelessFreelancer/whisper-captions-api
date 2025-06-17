@@ -80,6 +80,25 @@ function riseAnimation() {
   return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
 
+// ────────────────────────────────────────────────
+// BASELINE UP ANIMATION (slide upward through a static mask)
+// ────────────────────────────────────────────────
+/**
+ * Description:
+ *   Simulates text rising up from an invisible floor.
+ *   The text moves upward through a fixed vertical mask window,
+ *   revealing itself from top to bottom. No scaling involved.
+ *
+ * ASS Tag Logic:
+ *   \clip(0,900,980,1020)                   ; static vertical mask
+ *   \alpha&HFF&                             ; fully transparent at start
+ *   \t(0,100,\alpha&H00&)                   ; fade in over first 100ms
+ *
+ * Movement handled separately with \move(...) in subtitleBuilder.js
+ */
+function baselineupAnimation() {
+  return '\\clip(0,900,980,1020)\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
+}
 
 // ────────────────────────────────────────────────
 // TIME PARSER: ASS → seconds
