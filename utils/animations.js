@@ -43,20 +43,23 @@ function wordByWordAnimation(text) {
 }
 
 // ────────────────────────────────────────────────
-// BOUNCE ANIMATION (4-PHASE SPRING ENTRY)
+// BOUNCE ANIMATION (IMPACT DROP STYLE)
 // ────────────────────────────────────────────────
 /**
  * Description:
- *   Simulates a springy bounce from below with elastic easing.
- *   Text starts squashed vertically, overshoots upward, rebounds,
- *   and settles smoothly at full size.
- *   Includes a soft fade-in for smoother appearance.
+ *   Simulates an impact bounce where text falls from above,
+ *   slams into position, bounces upward slightly, and then settles.
+ *   Fade-in starts during the fall for a smoother entry.
  *
  * ASS Tag Logic:
- *   {\alpha&HFF&\t(0,150,\fscy50)\t(150,300,\fscy115)\t(300,450,\fscy90)\t(450,600,\fscy100)\t(0,100,\alpha&H00&)}
+ *   {\alpha&HFF&                      ; invisible start
+ *    \t(0,100,\alpha&H00&)           ; fade in
+ *    \t(0,120,\fscy140)              ; downward impact
+ *    \t(120,180,\fscy85)             ; upward rebound
+ *    \t(180,260,\fscy100)}           ; settle at 100%
  */
 function bounceAnimation() {
-  return `{\\alpha&HFF&\\t(0,150,\\fscy50)\\t(150,300,\\fscy115)\\t(300,450,\\fscy90)\\t(450,600,\\fscy100)\\t(0,100,\\alpha&H00&)}`;
+  return `{\\alpha&HFF&\\t(0,100,\\alpha&H00&)\\t(0,120,\\fscy140)\\t(120,180,\\fscy85)\\t(180,260,\\fscy100)}`;
 }
 
 // ────────────────────────────────────────────────
