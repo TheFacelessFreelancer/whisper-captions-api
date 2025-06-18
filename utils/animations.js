@@ -90,16 +90,16 @@ function riseAnimation() {
  *   revealing itself from top to bottom. No scaling involved.
  *
  * ASS Tag Logic:
- *   \clip(0,900,980,1020)                   ; static vertical mask
- *   \alpha&HFF&                             ; fully transparent at start
- *   \t(0,100,\alpha&H00&)                   ; fade in over first 100ms
+ *   \clip(0,900,980,1020)                ; static vertical mask
+ *   \alpha&HFF&                          ; fully transparent at start
+ *   \t(0,100,\alpha&H00&)               ; fade in over first 100ms
  *
  * Movement handled separately with \move(...) in subtitleBuilder.js
  */
-function baselineupAnimation() {
- function baselineupAnimation(clipY) {
+function baselineupAnimation(clipY) {
   return `\\clip(0,${clipY},980,1920)\\alpha&HFF&\\t(0,100,\\alpha&H00&)`;
 }
+
 
 // ────────────────────────────────────────────────
 // TIME PARSER: ASS → seconds
