@@ -122,7 +122,7 @@ const formattedCaptions = captions
     // ────────────────────────────────────────────────
     // 6.5: Animation Tags Based on Type
     // ────────────────────────────────────────────────
-    const anim = getAnimationTags(cleanText, animation);
+    const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
 
     // ────────────────────────────────────────────────
     // 6.6: Position Tag Calculation (\an5 + \pos(x,y))
