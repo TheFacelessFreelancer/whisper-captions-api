@@ -221,6 +221,16 @@ if (shouldForceSingleLine) {
       const yEnd = adjustedY;
       return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${adjustedX},${yStart},${adjustedX},${yEnd},0,150)${anim}}${line}`;
 }
+    if (animation === 'panleft') {
+      const xStart = 0;
+      const xEnd = adjustedX;
+      return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+}
+    if (animation === 'panright') {
+      const xStart = 980;
+      const xEnd = adjustedX;
+      return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+}
 
     // Other single-line animations
     return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{${pos}}${anim}${line}`;
