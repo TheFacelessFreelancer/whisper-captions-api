@@ -118,7 +118,7 @@ function parseAssTime(timeStr) {
 // ────────────────────────────────────────────────
 // MAIN EXPORT FUNCTION: getAnimationTags()
 // ────────────────────────────────────────────────
-export function getAnimationTags(text, type, start, end) {
+export function getAnimationTags(text, type, start, end, adjustedY = null) {
   switch (type) {
     case 'fade':
       return fadeAnimation();
