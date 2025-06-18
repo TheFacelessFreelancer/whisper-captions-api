@@ -69,33 +69,42 @@ const secondsToAss = (seconds) => {
 app.post('/subtitles', async (req, res) => {
   try {
     const {
-      videoUrl,
-      fileName,
-      fontName,
-      fontSize,
-      fontColor,
-      lineSpacing,
-      animation,
-      outlineColor,
-      outlineWidth,
-      shadow,
-      box,
-      boxColor,
-      boxPadding,
-      customX,
-      customY,
-      preset,
-      effects,
-      caps,
-      lineLayout
-    } = req.body;
+  videoUrl,
+  fileName,
+  fontName,
+  fontSize,
+  fontColorHex,
+  lineSpacing,
+  animation,
+  outlineColorHex,
+  outlineWidth,
+  shadow,
+  box,
+  boxColorHex,
+  boxPadding,
+  customX,
+  customY,
+  preset,
+  effects,
+  caps,
+  lineLayout
+} = req.body;
 
     const jobId = uuidv4();
     const safeFileName = fileName || jobId;
 
-    const fontColorAss = hexToASS(fontColor);
-    const outlineColorAss = hexToASS(outlineColor);
-    const boxColorAss = hexToASS(boxColor);
+    const fontColorAss = hexToASS(fontColorHex);
+    const outlineColorAss = hexToASS(outlineColorHex);
+    const boxColorAss = hexToASS(boxColorHex);
+
+    console.log("🎨 Converted ASS Colors:", {
+  fontColorHex,
+  fontColorAss,
+  outlineColorHex,
+  outlineColorAss,
+  boxColorHex,
+  boxColorAss
+});
 
     // 🔁 Override positioning using preset (bottom-safe, top-safe, etc.)
     let finalCustomY = customY;
