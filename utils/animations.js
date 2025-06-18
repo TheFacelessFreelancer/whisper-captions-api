@@ -97,7 +97,8 @@ function riseAnimation() {
  * Movement handled separately with \move(...) in subtitleBuilder.js
  */
 function baselineupAnimation() {
-  return '\\clip(0,900,980,1020)\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
+ function baselineupAnimation(clipY) {
+  return `\\clip(0,${clipY},980,1920)\\alpha&HFF&\\t(0,100,\\alpha&H00&)`;
 }
 
 // ────────────────────────────────────────────────
