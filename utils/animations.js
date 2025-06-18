@@ -100,6 +100,35 @@ function baselineupAnimation(clipY) {
   return `\\clip(0,${clipY},980,1920)\\alpha&HFF&\\t(0,100,\\alpha&H00&)`;
 }
 
+// ────────────────────────────────────────────────
+// PAN LEFT ANIMATION (slides in from left to center)
+// ────────────────────────────────────────────────
+/**
+ * Description:
+ *   Text slides from left edge into center.
+ *   Uses horizontal \move(...) motion + fade-in.
+ *   Ends at adjustedX.
+ *
+ * Motion handled by \move() in subtitleBuilder.js.
+ */
+function panleftAnimation() {
+  return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
+}
+
+// ────────────────────────────────────────────────
+// PAN RIGHT ANIMATION (slides in from right to center)
+// ────────────────────────────────────────────────
+/**
+ * Description:
+ *   Text slides from right edge into center.
+ *   Uses horizontal \move(...) motion + fade-in.
+ *   Ends at adjustedX.
+ *
+ * Motion handled by \move() in subtitleBuilder.js.
+ */
+function panrightAnimation() {
+  return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
+}
 
 // ────────────────────────────────────────────────
 // TIME PARSER: ASS → seconds
