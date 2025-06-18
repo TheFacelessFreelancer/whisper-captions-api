@@ -45,16 +45,10 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
-  // ────────────────────────────────────────────────
-  // 3. FILE SETUP
-  // ────────────────────────────────────────────────
   const subtitlesDir = path.join('subtitles');
   const filePath = path.join(subtitlesDir, `${jobId}.ass`);
   await fs.promises.mkdir(subtitlesDir, { recursive: true });
 
-  // ────────────────────────────────────────────────
-  // 4. TEXT TRANSFORM HELPERS
-  // ────────────────────────────────────────────────
   const applyCaps = (text) => {
     if (caps === 'allcaps') return text.toUpperCase();
     if (caps === 'titlecase') return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
@@ -68,9 +62,6 @@ export async function buildSubtitlesFile({
       .replace(/"/g, '\\"');
   };
 
-  // ────────────────────────────────────────────────
-  // 5. STYLE HEADER: [Script Info], [V4+ Styles], [Events]
-  // ────────────────────────────────────────────────
   const boxColorAss = box ? boxColor : '&H00000000';
   const style = `
 [Script Info]
@@ -87,9 +78,6 @@ Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${outlineColor},$
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // ────────────────────────────────────────────────
-  // 6. FORMATTED CAPTIONS: Text formatting, animation, and position
-  // ────────────────────────────────────────────────
   const screenWidth = 980;
   const screenHeight = 1920;
   const avgCharWidth = fontSize * 0.55;
@@ -105,16 +93,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
     const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
 
-    // ────────────────────────────────────────────────
-    // 6.1 INLINE ANIMATIONS (word-by-word, typewriter)
-    // ────────────────────────────────────────────────
     if (['word-by-word', 'typewriter'].includes(animation)) {
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
     }
 
-    // ────────────────────────────────────────────────
-    // 6.2 CHUNKED ANIMATIONS (fall, rise, etc.)
-    // ────────────────────────────────────────────────
     if (['fall', 'rise', 'baselineup', 'panleft', 'panright'].includes(animation)) {
       const parseTime = (str) => {
         const [h, m, s] = str.split(':');
@@ -189,28 +171,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         }
 
         if (animation === 'panleft') {
-          const xStart = screenWidth;
+          const xStart = 980;
           const xEnd = adjustedX;
-          return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5${wrapOverride}\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+          return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\q2\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
         }
 
         if (animation === 'panright') {
           const xStart = 0;
           const xEnd = adjustedX;
-          return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5${wrapOverride}\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+          return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\q2\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
         }
       });
     }
 
-    // ────────────────────────────────────────────────
-    // 6.3 DEFAULT CAPTIONS (e.g., fade, normal)
-    // ────────────────────────────────────────────────
     return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
   }).join('\n');
 
-  // ────────────────────────────────────────────────
-  // 7. FILE OUTPUT
-  // ────────────────────────────────────────────────
   const content = style + formattedCaptions;
   await fs.promises.writeFile(filePath, content);
   console.log(`✅ Subtitle file written: ${filePath}`);
