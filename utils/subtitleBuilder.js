@@ -120,12 +120,7 @@ const formattedCaptions = captions
     const cleanText = applyCaps(escapeText(cleanedText));
 
     // ────────────────────────────────────────────────
-    // 6.5: Animation Tags Based on Type
-    // ────────────────────────────────────────────────
-    const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
-
-    // ────────────────────────────────────────────────
-    // 6.6: Position Tag Calculation (\an5 + \pos(x,y))
+    // 6.5: Position Tag Calculation (\an5 + \pos(x,y))
     // ────────────────────────────────────────────────
     const screenWidth = 980;
     const adjustedX = screenWidth / 2 + customX;
@@ -133,6 +128,11 @@ const formattedCaptions = captions
     const wrapOverride = shouldForceSingleLine ? '\\q2' : '';
     const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
 
+    // ────────────────────────────────────────────────
+    // 6.6: Animation Tags Based on Type
+    // ────────────────────────────────────────────────
+    const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
+    
     // ────────────────────────────────────────────────
     // 6.7: Line Splitting Helper (for visual line capping)
     // ────────────────────────────────────────────────
