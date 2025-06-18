@@ -224,13 +224,13 @@ if (shouldForceSingleLine) {
     if (animation === 'panleft') {
   const xStart = 980;
   const xEnd = adjustedX;
-  return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+  return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5${wrapOverride}\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
 }
 
 if (animation === 'panright') {
   const xStart = 0;
   const xEnd = adjustedX;
-  return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
+  return `Dialogue: 0,${formatTime(chunkStart)},${formatTime(chunkEnd)},Default,,0,0,0,,{\\an5${wrapOverride}\\move(${xStart},${adjustedY},${xEnd},${adjustedY},0,150)${anim}}${line}`;
 }
 
     // Other single-line animations
