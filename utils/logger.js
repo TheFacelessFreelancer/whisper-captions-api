@@ -15,4 +15,3 @@ export function logProgress(step, data = {}) {
 export function logError(label, error) {
   console.error(`[❌ ERROR - ${getTimestamp()}] ${label}:`, error.stack || error.message || error);
 }
-
