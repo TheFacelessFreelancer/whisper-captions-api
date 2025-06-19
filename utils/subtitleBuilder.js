@@ -21,6 +21,7 @@ import fs from 'fs';
 import path from 'path';
 import { hexToASS } from './colors.js';
 import { getAnimationTags } from './animations.js';
+import { logInfo, logError } from './logger.js';
 
 // ────────────────────────────────────────────────
 // 2. MAIN EXPORT FUNCTION
@@ -45,9 +46,10 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
-  const subtitlesDir = path.join('subtitles');
-  const filePath = path.join(subtitlesDir, `${jobId}.ass`);
-  await fs.promises.mkdir(subtitlesDir, { recursive: true });
+  try {
+    const subtitlesDir = path.join('subtitles');
+    const filePath = path.join(subtitlesDir, `${jobId}.ass`);
+    await fs.promises.mkdir(subtitlesDir, { recursive: true });
 
   const applyCaps = (text) => {
     if (caps === 'allcaps') return text.toUpperCase();
@@ -189,6 +191,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
   const content = style + formattedCaptions;
   await fs.promises.writeFile(filePath, content);
-  console.log(`✅ Subtitle file written: ${filePath}`);
+  logInfo(`✅ Subtitle file written: ${filePath}`);
   return filePath;
 }
