@@ -198,3 +198,4 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   logError("Subtitle Builder Error", err);
   throw err;
 }
+}
