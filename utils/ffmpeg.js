@@ -19,6 +19,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import { logInfo, logProgress, logError } from './logger.js';
 const execAsync = promisify(exec);
 
 // ────────────────────────────────────────────────
@@ -30,10 +31,15 @@ const execAsync = promisify(exec);
  * @param {string} audioPath - Path to output audio file (.mp3).
  */
 export const extractAudio = async (videoPath, audioPath) => {
-  console.log('🔊 Extracting audio with FFmpeg...');
-  const command = `ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`;
-  await execAsync(command);
-  console.log('✅ Audio extracted:', audioPath);
+  try {
+    logProgress('🔊 Extracting audio with FFmpeg');
+    const command = `ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`;
+    await execAsync(command);
+    logInfo('✅ Audio extracted:', audioPath);
+  } catch (err) {
+    logError('Audio extraction failed', err);
+    throw err;
+  }
 };
 
 // ────────────────────────────────────────────────
@@ -46,13 +52,17 @@ export const extractAudio = async (videoPath, audioPath) => {
  * @param {string} outputPath - Path to save the final rendered video.
  */
 export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPath) => {
-  console.log('🎬 Rendering video with subtitles...');
+  try {
+    logProgress('🎬 Rendering video with subtitles');
 
-  // Force absolute path and proper quoting
-  const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
-  const command = `ffmpeg -y -i "${videoPath}" -vf "subtitles='${absoluteSubtitlePath}'" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
+    const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
+    const command = `ffmpeg -y -i "${videoPath}" -vf "subtitles='${absoluteSubtitlePath}'" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
 
-  console.log(`▶ Running: ${command}`);
-  await execAsync(command);
-  console.log('✅ Final video rendered:', outputPath);
+    logProgress('▶ Running FFmpeg command', command);
+    await execAsync(command);
+    logInfo('✅ Final video rendered:', outputPath);
+  } catch (err) {
+    logError('Video rendering failed', err);
+    throw err;
+  }
 };
