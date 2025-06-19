@@ -207,6 +207,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }).join('\n');
 
     const content = style + formattedCaptions;
+    logInfo("🧾 ASS STYLE DEBUG", { style });
     await fs.promises.writeFile(filePath, content);
     logInfo(`✅ Subtitle file written: ${filePath}`);
     return filePath;
