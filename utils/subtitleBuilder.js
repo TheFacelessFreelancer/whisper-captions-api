@@ -80,7 +80,7 @@ export async function buildSubtitlesFile({
 
     const boxColorAss = box ? hexToASSWithAlpha(boxColor, boxAlpha) : '&H00000000';
     const finalOutlineColor = hexToASS(boxOutlineColorHex);
-    const finalOutlineWidth = boxOutlineWidth || 0;
+    const finalOutlineWidth = box ? Math.max(1, boxOutlineWidth || 0) : 0;
 
     const style = `
 [Script Info]
