@@ -13,9 +13,10 @@
 // ────────────────────────────────────────────────
 import cloudinary from 'cloudinary';
 import fs from 'fs';
+import { logInfo, logProgress, logError } from './logger.js';
 
 cloudinary.v2.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, // e.g. 'de3ip4mlt'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
@@ -24,6 +25,8 @@ cloudinary.v2.config({
 // UPLOAD FUNCTION
 // ────────────────────────────────────────────────
 export async function uploadToCloudinary(filePath, publicId) {
+  logProgress('📤 Uploading video to Cloudinary...', { filePath, publicId });
+
   return new Promise((resolve, reject) => {
     cloudinary.v2.uploader.upload(
       filePath,
@@ -31,14 +34,14 @@ export async function uploadToCloudinary(filePath, publicId) {
         resource_type: 'video',
         public_id: publicId,
         overwrite: true,
-        folder: 'captions-app',
+        folder: 'Caption-Factory-App-Videos',
       },
       (error, result) => {
         if (error) {
-          console.error('❌ Cloudinary upload error:', error);
+          logError('❌ Cloudinary upload failed', error);
           reject(error);
         } else {
-          console.log('✅ Uploaded to Cloudinary:', result.secure_url);
+          logInfo('✅ Uploaded to Cloudinary:', result.secure_url);
           resolve(result.secure_url);
         }
       }
