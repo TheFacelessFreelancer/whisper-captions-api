@@ -14,6 +14,10 @@
  *
  * All animation blocks are modular and independently testable.
  */
+// ────────────────────────────────────────────────
+// IMPORTS
+// ────────────────────────────────────────────────
+import { logInfo, logProgress, logError } from './logger.js';
 
 // ────────────────────────────────────────────────
 // FADE ANIMATION
@@ -148,6 +152,7 @@ function parseAssTime(timeStr) {
 // MAIN EXPORT FUNCTION: getAnimationTags()
 // ────────────────────────────────────────────────
 export function getAnimationTags(text, type, start, end, adjustedY = null) {
+  logProgress("🎞️ Building animation tag:", type);
   switch (type) {
     case 'fade':
       return fadeAnimation();
