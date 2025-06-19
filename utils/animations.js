@@ -173,6 +173,7 @@ export function getAnimationTags(text, type, start, end, adjustedY = null) {
       case 'panleft':
       return panleftAnimation();
     default:
+       logError("❌ Unknown animation type", type);
       return '';
   }
 }
