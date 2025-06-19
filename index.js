@@ -37,11 +37,12 @@ import { hexToASS } from './utils/colors.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
 import { renderVideoWithSubtitles, extractAudio } from './utils/ffmpeg.js';
 import whisperTranscribe from './utils/whisper.js';
+import { logInfo, logProgress, logError } from './utils/logger.js';
 
 // ────────────────────────────────────────────────
-// 2. In-memory cache for completed jobs
+// 2. IN-MEMORY CACHE FOR JOB RESULTS
 // ────────────────────────────────────────────────
-const jobResults = {}; // Store completed job results in memory
+const jobResults = {};
 
 // ────────────────────────────────────────────────
 // 3. EXPRESS SERVER SETUP
@@ -69,26 +70,26 @@ const secondsToAss = (seconds) => {
 app.post('/subtitles', async (req, res) => {
   try {
     const {
-  videoUrl,
-  fileName,
-  fontName,
-  fontSize,
-  fontColorHex,
-  lineSpacing,
-  animation,
-  outlineColorHex,
-  outlineWidth,
-  shadow,
-  box,
-  boxColorHex,
-  boxPadding,
-  customX,
-  customY,
-  preset,
-  effects,
-  caps,
-  lineLayout
-} = req.body;
+      videoUrl,
+      fileName,
+      fontName,
+      fontSize,
+      fontColorHex,
+      lineSpacing,
+      animation,
+      outlineColorHex,
+      outlineWidth,
+      shadow,
+      box,
+      boxColorHex,
+      boxPadding,
+      customX,
+      customY,
+      preset,
+      effects,
+      caps,
+      lineLayout
+    } = req.body;
 
     const jobId = uuidv4();
     const safeFileName = fileName || jobId;
@@ -97,14 +98,14 @@ app.post('/subtitles', async (req, res) => {
     const outlineColorAss = hexToASS(outlineColorHex);
     const boxColorAss = hexToASS(boxColorHex);
 
-    console.log("🎨 Converted ASS Colors:", {
-  fontColorHex,
-  fontColorAss,
-  outlineColorHex,
-  outlineColorAss,
-  boxColorHex,
-  boxColorAss
-});
+    logInfo("🎨 Converted ASS Colors", {
+      fontColorHex,
+      fontColorAss,
+      outlineColorHex,
+      outlineColorAss,
+      boxColorHex,
+      boxColorAss
+    });
 
     // 🔁 Override positioning using preset (bottom-safe, top-safe, etc.)
     let finalCustomY = customY;
@@ -113,11 +114,11 @@ app.post('/subtitles', async (req, res) => {
     else if (preset === 'center') finalCustomY = 0;
 
     // ✅ Respond to Make immediately
-    console.log("🚀 Sending response to Make:", { jobId, success: true });
+    logInfo("🚀 Sending response to Make", { jobId, success: true });
     res.json({ jobId, success: true });
 
     // ────────────────────────────────────────────────
-    // 6. BACKGROUND VIDEO RENDERING
+    // 6. BACKGROUND VIDEO RENDERING (ASYNC)
     // ────────────────────────────────────────────────
     setTimeout(async () => {
       try {
@@ -137,7 +138,7 @@ app.post('/subtitles', async (req, res) => {
           text: segment.text.trim()
         }));
 
-        console.log("📺 Captions Generated:", captions);
+        logProgress("Captions Generated", captions);
 
         // Step 4: Build .ass subtitle file
         const subtitleFilePath = await buildSubtitlesFile({
@@ -172,18 +173,18 @@ app.post('/subtitles', async (req, res) => {
         };
 
       } catch (err) {
-        console.error("❌ Background processing error:", err.message);
+        logError("Background processing error", err);
       }
-    }, 10); // Background task starts after response
+    }, 10);
 
   } catch (err) {
-    console.error("❌ Server error:", err.message);
+    logError("Server error", err);
     res.status(500).json({ error: 'Something went wrong.' });
   }
 });
 
 // ────────────────────────────────────────────────
-// 7. JOB STATUS LOOKUP ENDPOINT
+// 7. JOB STATUS LOOKUP ENDPOINT: /results/:jobId
 // ────────────────────────────────────────────────
 app.get('/results/:jobId', (req, res) => {
   const jobId = req.params.jobId;
@@ -208,5 +209,5 @@ app.get('/results/:jobId', (req, res) => {
 // 8. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
+  logInfo(`🚀 Server running on port ${port}`);
 });
