@@ -82,9 +82,10 @@ export async function buildSubtitlesFile({
   ? hexToASSWithAlpha(boxColor, boxAlpha)
   : '&H00000000';
 
-const finalOutlineColor = boxOutlineColorHex
-  ? hexToASS(boxOutlineColorHex)
-  : '&H00000000';
+const finalOutlineWidth =
+  (box === true || box === 'true') && (outlineWidth === 0 || !outlineWidth)
+    ? 1
+    : outlineWidth || 0;
 
 const finalOutlineWidth = box === true || box === 'true'
   ? Math.max(1, boxOutlineWidth || 0)
