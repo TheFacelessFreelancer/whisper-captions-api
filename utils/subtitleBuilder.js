@@ -78,14 +78,23 @@ export async function buildSubtitlesFile({
         .replace(/"/g, '\\"');
     };
 
-   const boxColorAss = box === true || box === 'true'
+  const boxColorAss = box === true || box === 'true'
   ? hexToASSWithAlpha(boxColor, boxAlpha)
   : '&H00000000';
 
-const finalOutlineColor = hexToASS(boxOutlineColorHex);
+const finalOutlineColor = boxOutlineColorHex
+  ? hexToASS(boxOutlineColorHex)
+  : '&H00000000';
+
 const finalOutlineWidth = box === true || box === 'true'
   ? Math.max(1, boxOutlineWidth || 0)
   : 0;
+
+logInfo("🎯 OUTLINE DEBUG", {
+  outlineColorHex: boxOutlineColorHex,
+  convertedOutlineColor: finalOutlineColor,
+  outlineWidth: finalOutlineWidth
+});
 
     const style = `
 [Script Info]
