@@ -87,10 +87,6 @@ const finalOutlineWidth =
     ? 1
     : outlineWidth || 0;
 
-const finalOutlineWidth = box === true || box === 'true'
-  ? Math.max(1, boxOutlineWidth || 0)
-  : 0;
-
 logInfo("🎯 OUTLINE DEBUG", {
   outlineColorHex: boxOutlineColorHex,
   convertedOutlineColor: finalOutlineColor,
