@@ -31,7 +31,7 @@ function hexToASSWithAlpha(hex, alphaPercent = 100) {
   const b = rgb.slice(4, 6);
   const alpha = Math.round((100 - alphaPercent) * 2.55);
   const alphaHex = alpha.toString(16).padStart(2, '0').toUpperCase();
-  return `&H${alphaHex}${b}${g}${r}`;
+  return `&H${alphaHex}${r}${g}${b}`;
 }
 
 // ────────────────────────────────────────────────
