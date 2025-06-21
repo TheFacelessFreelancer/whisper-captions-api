@@ -88,10 +88,19 @@ let finalOutlineColor = '&H00000000';
 let finalBoxColor = '&H00000000';
 
 if (styleMode === 'box') {
-  const safeBoxColorHex = boxColorHex || '#FFFFFF'; // ✅ fallback to white
+  // ✅ Check if boxColorHex is valid
+  const isValidColor = /^#([0-9a-f]{6})$/i.test(boxColorHex);
+  const safeBoxColorHex = isValidColor ? boxColorHex : '#FFFFFF'; // fallback to white ONLY if empty or invalid
+
+  // ✅ Use this for background and invisible outline masking
   finalBoxColor = hexToASSWithAlpha(safeBoxColorHex, boxAlpha);
-  finalOutlineWidth = enablePadding ? 3 : 1; // ✅ simulate padding
-  finalOutlineColor = hexToASS(safeBoxColorHex);  // ✅ match box to mask outline
+  finalOutlineWidth = enablePadding ? 3 : 1;
+  finalOutlineColor = hexToASS(safeBoxColorHex);
+
+  // ✅ Prevent white text on white box
+  if (fontColor?.toLowerCase() === safeBoxColorHex.toLowerCase()) {
+    fontColor = '#000000'; // fallback to black text
+  }
 }
 
 if (styleMode === 'outline') {
