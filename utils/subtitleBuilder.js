@@ -126,7 +126,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const screenWidth = 980;
     const screenHeight = 1920;
     const avgCharWidth = fontSize * 0.55;
-    const usableWidth = screenWidth - boxPadding * 2 - outlineWidth * 2;
+    const usableWidth = screenWidth - 20 - outlineWidth * 2;
     const maxChars = Math.floor(usableWidth / avgCharWidth);
 
     const formattedCaptions = captions.map(caption => {
