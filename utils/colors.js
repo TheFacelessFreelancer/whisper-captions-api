@@ -15,5 +15,5 @@ export function hexToASS(hex, alphaPercentage = 100) {
   const alphaDecimal = Math.round((100 - alphaPercentage) * 2.55); // reverse scale
   const alpha = alphaDecimal.toString(16).padStart(2, '0').toUpperCase();
 
-  return `&H${alpha}${b}${g}${r}`;
+  return `&H${alpha}${r}${g}${b}`; 
 }
