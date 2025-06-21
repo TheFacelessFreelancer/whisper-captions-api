@@ -105,26 +105,6 @@ logInfo("🎯 RENDER MODE DEBUG", {
   finalOutlineWidth
 });
 
-
-  const boxColorAss = box === true || box === 'true'
-  ? hexToASSWithAlpha(boxColor, boxAlpha)
-  : '&H00000000';
-
-  const finalOutlineColor = boxOutlineColorHex
-  ? hexToASS(boxOutlineColorHex)
-  : '&H00000000';
-
-  const finalOutlineWidth =
-  (box === true || box === 'true') && (outlineWidth === 0 || !outlineWidth)
-  ? 1
-  : outlineWidth || 0;
-
-logInfo("🎯 OUTLINE DEBUG", {
-  outlineColorHex: boxOutlineColorHex,
-  convertedOutlineColor: finalOutlineColor,
-  outlineWidth: finalOutlineWidth
-});
-
     const style = `
 [Script Info]
 Title: Captions
