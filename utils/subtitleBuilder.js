@@ -61,6 +61,8 @@ export async function buildSubtitlesFile({
   captions = []
 }) {
 
+  styleMode = styleMode || 'box'; // fallback to 'box' if undefined
+
   try {
     const subtitlesDir = path.join('subtitles');
     const filePath = path.join(subtitlesDir, `${jobId}.ass`);
