@@ -42,18 +42,17 @@ export async function buildSubtitlesFile({
   fontName,
   fontSize,
   fontColor,
-  outlineColor,
+  styleMode,
+  boxColorHex,
+  boxAlpha,
+  enablePadding,
+  outlineColorHex,
   outlineWidth,
   shadow,
-  box,
-  boxColor,
-  boxAlpha,
-  boxOutlineColorHex,
-  boxOutlineWidth,
-  boxPadding,
-  animation,
+  shadowColorHex,
   lineSpacing,
-  styleMode,
+  animation,
+  preset,
   customX,
   customY,
   effects = {},
@@ -61,6 +60,7 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
+
   try {
     const subtitlesDir = path.join('subtitles');
     const filePath = path.join(subtitlesDir, `${jobId}.ass`);
