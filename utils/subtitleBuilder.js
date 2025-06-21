@@ -53,6 +53,7 @@ export async function buildSubtitlesFile({
   boxPadding,
   animation,
   lineSpacing,
+  styleMode,
   customX,
   customY,
   effects = {},
@@ -77,6 +78,33 @@ export async function buildSubtitlesFile({
         .replace(/}/g, '\\}')
         .replace(/"/g, '\\"');
     };
+// ────────────────────────────────────────────────
+// STYLE MODE LOGIC
+// ────────────────────────────────────────────────
+let finalOutlineWidth = 0;
+let finalOutlineColor = '&H00000000';
+let finalBoxColor = '&H00000000';
+
+if (styleMode === 'box') {
+  finalBoxColor = hexToASSWithAlpha(boxColorHex, boxAlpha);
+  finalOutlineWidth = enablePadding ? 3 : 1;
+  finalOutlineColor = hexToASS(boxColorHex); // match box color
+}
+
+if (styleMode === 'outline') {
+  finalBoxColor = '&H00000000'; // no background
+  finalOutlineWidth = parseInt(outlineWidth) || 0;
+  finalOutlineColor = hexToASS(outlineColorHex);
+}
+
+// Log the actual values for debugging
+logInfo("🎯 RENDER MODE DEBUG", {
+  styleMode,
+  finalBoxColor,
+  finalOutlineColor,
+  finalOutlineWidth
+});
+
 
   const boxColorAss = box === true || box === 'true'
   ? hexToASSWithAlpha(boxColor, boxAlpha)
@@ -106,7 +134,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${boxColorAss},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,${boxPadding},${boxPadding},${boxPadding},1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,10,10,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
