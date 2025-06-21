@@ -86,9 +86,10 @@ let finalOutlineColor = '&H00000000';
 let finalBoxColor = '&H00000000';
 
 if (styleMode === 'box') {
-  finalBoxColor = hexToASSWithAlpha(boxColorHex, boxAlpha);
+  const safeBoxColorHex = boxColorHex || '#FFFFFF'; // ✅ fallback to solid white
+  finalBoxColor = hexToASSWithAlpha(safeBoxColorHex, boxAlpha);
   finalOutlineWidth = enablePadding ? 3 : 1;
-  finalOutlineColor = hexToASS(boxColorHex); // match box color
+  finalOutlineColor = hexToASS(safeBoxColorHex); // ✅ match box color to avoid text outline effect
 }
 
 if (styleMode === 'outline') {
