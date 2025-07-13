@@ -67,7 +67,7 @@ export async function buildSubtitlesFile({
   fontName,
   fontSize,
   fontColor,
-  styleMode,
+  styleMode = 'box',
   boxColor,
   enablePadding,
   outlineColorHex,
@@ -85,8 +85,6 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
-  styleMode = styleMode || 'box';
-
   try {
     // ────────────────────────────────────────────────
     // 4. FILE SETUP
@@ -121,7 +119,7 @@ export async function buildSubtitlesFile({
       finalOutlineWidth = enablePadding || (typeof boxPadding !== 'undefined' && boxPadding > 0) ? 3 : 1;
 
       if (fontColor?.toLowerCase() === finalBoxColor?.toLowerCase()) {
-        fontColor = '#000000';
+        fontColor = '#000000'; // fallback for contrast
       }
     }
 
@@ -147,22 +145,20 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},
-${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,
-100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,${boxPadding},${boxPadding},10,1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,${boxPadding},${boxPadding},10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
     // ────────────────────────────────────────────────
-    // 7. FORMATTED CAPTIONS
+    // 7. FORMATTED CAPTIONS: preset-driven logic blocks
     // ────────────────────────────────────────────────
-    const screenWidth = 920;
+    const screenWidth = 980;
     const screenHeight = 1920;
-    const avgCharWidth = fontSize * 0.55;
-    const usableWidth = screenWidth - 20 - outlineWidth * 2;
-    const maxChars = Math.floor(usableWidth / avgCharWidth);
+    const adjustedX = screenWidth / 2 + customX;
+    const adjustedY = screenHeight / 2 - customY;
+    const pos = `\\an5\\pos(${adjustedX},${adjustedY})`;
 
     const formattedCaptions = captions.map(caption => {
       const rawText = caption.text;
@@ -171,40 +167,27 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       if (preset === 'Emoji Pop') cleanText = injectEmojiOnce(cleanText);
       cleanText = applyCaps(cleanText);
 
-      const adjustedX = screenWidth / 2 + customX;
-      const adjustedY = screenHeight / 2 - customY;
-      const wrapOverride = ['fall', 'rise', 'panleft', 'panright', 'baselineup'].includes(animation) ? '\\q2' : '';
-      const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
       const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
 
-      // HERO POP STYLE: yellow ➝ white
-      if (animation === 'word-by-word') {
+      if (preset === 'Hero Pop' && animation === 'word-by-word') {
         const words = cleanText.split(' ');
-        const highlighted = words.map(word => {
-          if (preset === 'Hero Pop') {
-            return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}${word}`;
-          }
-          return word;
-        }).join(' ');
+        const highlighted = words.map(word => `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word).join(' ');
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
       }
 
-      // TYPEWRITER STYLE
-      if (animation === 'typewriter') {
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
-      }
-
-      // CINEMATIC FADE STYLE
       if (preset === 'Cinematic Fade') {
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
       }
 
-      // DEFAULT
+      if (['fall', 'rise', 'baselineup', 'panleft', 'panright'].includes(animation)) {
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
+      }
+
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
     }).join('\n');
 
     // ────────────────────────────────────────────────
-    // 8. OUTPUT FILE
+    // 8. FILE OUTPUT
     // ────────────────────────────────────────────────
     const content = style + formattedCaptions;
     logInfo("🧾 ASS STYLE DEBUG", { style });
