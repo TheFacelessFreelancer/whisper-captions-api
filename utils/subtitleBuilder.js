@@ -66,7 +66,7 @@ export async function buildSubtitlesFile({
         .replace(/"/g, '\\"');
     };
 
-    // ────────────────────────────────────────────────
+   // ────────────────────────────────────────────────
 // STYLE MODE LOGIC
 // ────────────────────────────────────────────────
 let finalOutlineWidth = 0;
@@ -75,7 +75,7 @@ let finalBoxColor = '&H00000000';
 
 if (styleMode === 'box') {
   finalBoxColor = boxColor;
-  finalOutlineColor = outlineColor;
+  finalOutlineColor = outlineColorHex;
   finalOutlineWidth = enablePadding ? 3 : 1;
 
   // ✅ Prevent white text on white box
@@ -87,8 +87,9 @@ if (styleMode === 'box') {
 if (styleMode === 'outline') {
   finalBoxColor = '&H00000000'; // no background
   finalOutlineWidth = parseInt(outlineWidth) || 0;
-  finalOutlineColor = outlineColor;
+  finalOutlineColor = outlineColorHex;
 }
+
 
 // Log the actual values for debugging
 logInfo("🎯 RENDER MODE DEBUG", {
