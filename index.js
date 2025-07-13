@@ -150,7 +150,7 @@ app.post('/subtitles', async (req, res) => {
           fontColor: fontColorAss,
           lineSpacing,
           animation,
-          outlineColor: outlineColorAss,
+          outlineColorhex: outlineColorAss,
           outlineWidth,
           shadow,
           box,
