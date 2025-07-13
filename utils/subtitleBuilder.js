@@ -67,9 +67,9 @@ export async function buildSubtitlesFile({
     };
 
     // ────────────────────────────────────────────────
-    // STYLE MODE LOGIC
-    // ────────────────────────────────────────────────
- let finalOutlineWidth = 0;
+// STYLE MODE LOGIC
+// ────────────────────────────────────────────────
+let finalOutlineWidth = 0;
 let finalOutlineColor = '&H00000000';
 let finalBoxColor = '&H00000000';
 
@@ -77,21 +77,26 @@ if (styleMode === 'box') {
   finalBoxColor = boxColor;
   finalOutlineColor = outlineColor;
   finalOutlineWidth = enablePadding ? 3 : 1;
+
+  // ✅ Prevent white text on white box
+  if (fontColor?.toLowerCase() === finalBoxColor?.toLowerCase()) {
+    fontColor = '#000000'; // fallback to black text (only used for visual override in logs)
+  }
 }
 
-    if (styleMode === 'outline') {
-      finalBoxColor = '&H00000000'; // no background
-      finalOutlineWidth = parseInt(outlineWidth) || 0;
-      finalOutlineColor = hexToASS(outlineColorHex);
-    }
+if (styleMode === 'outline') {
+  finalBoxColor = '&H00000000'; // no background
+  finalOutlineWidth = parseInt(outlineWidth) || 0;
+  finalOutlineColor = outlineColor;
+}
 
-    // Log the actual values for debugging
-    logInfo("🎯 RENDER MODE DEBUG", {
-      styleMode,
-      finalBoxColor,
-      finalOutlineColor,
-      finalOutlineWidth
-    });
+// Log the actual values for debugging
+logInfo("🎯 RENDER MODE DEBUG", {
+  styleMode,
+  finalBoxColor,
+  finalOutlineColor,
+  finalOutlineWidth
+});
 
     const style = `
 [Script Info]
