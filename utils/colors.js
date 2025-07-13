@@ -1,7 +1,9 @@
 // utils/colors.js
 
-export function hexToASS(hex, alphaPercentage = 100) {
-  if (!hex) return "&H00000000";
+export function hexToASS(hex, opacityPercent = 100) {
+  opacityPercent = typeof opacityPercent === 'number' && !isNaN(opacityPercent)
+    ? opacityPercent
+    : 100;
 
   const match = hex.match(/^#?([a-f\d]{6})$/i);
   if (!match) return "&H00000000";
