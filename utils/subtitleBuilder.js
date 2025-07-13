@@ -21,19 +21,6 @@ import { hexToASS } from './colors.js';
 import { getAnimationTags } from './animations.js';
 import { logInfo, logError } from './logger.js';
 
-function hexToASSWithAlpha(hex, alphaPercent = 100) {
-  if (!hex) return "&H00000000";
-  const match = hex.match(/^#?([a-f\d]{6})$/i);
-  if (!match) return "&H00000000";
-  const rgb = match[1];
-  const r = rgb.slice(0, 2);
-  const g = rgb.slice(2, 4);
-  const b = rgb.slice(4, 6);
-  const alpha = Math.round((100 - alphaPercent) * 2.55);
-  const alphaHex = alpha.toString(16).padStart(2, '0').toUpperCase();
-  return `&H${alphaHex}${r}${g}${b}`;
-}
-
 // ────────────────────────────────────────────────
 // 2. MAIN EXPORT FUNCTION
 // ────────────────────────────────────────────────
@@ -43,8 +30,7 @@ export async function buildSubtitlesFile({
   fontSize,
   fontColor,
   styleMode,
-  boxColorHex,
-  boxAlpha,
+  boxColor, // ✅ updated
   enablePadding,
   outlineColorHex,
   outlineWidth,
@@ -60,7 +46,6 @@ export async function buildSubtitlesFile({
   lineLayout = 'single',
   captions = []
 }) {
-
   styleMode = styleMode || 'box'; // fallback to 'box' if undefined
 
   try {
@@ -80,42 +65,33 @@ export async function buildSubtitlesFile({
         .replace(/}/g, '\\}')
         .replace(/"/g, '\\"');
     };
-// ────────────────────────────────────────────────
-// STYLE MODE LOGIC
-// ────────────────────────────────────────────────
-let finalOutlineWidth = 0;
-let finalOutlineColor = '&H00000000';
-let finalBoxColor = '&H00000000';
 
-if (styleMode === 'box') {
-  // ✅ Check if boxColorHex is valid
-  const isValidColor = /^#([0-9a-f]{6})$/i.test(boxColorHex);
-  const safeBoxColorHex = isValidColor ? boxColorHex : '#FFFFFF'; // fallback to white ONLY if empty or invalid
+    // ────────────────────────────────────────────────
+    // STYLE MODE LOGIC
+    // ────────────────────────────────────────────────
+    let finalOutlineWidth = 0;
+    let finalOutlineColor = '&H00000000';
+    let finalBoxColor = '&H00000000';
 
-  // ✅ Use this for background and invisible outline masking
-  finalBoxColor = hexToASSWithAlpha(safeBoxColorHex, boxAlpha);
-  finalOutlineWidth = enablePadding ? 3 : 1;
-  finalOutlineColor = hexToASS(safeBoxColorHex);
+    if (styleMode === 'box') {
+      finalBoxColor = boxColor; // ✅ use precomputed ASS value from index.js
+      finalOutlineWidth = enablePadding ? 3 : 1;
+      finalOutlineColor = '&H00000000';
+    }
 
-  // ✅ Prevent white text on white box
-  if (fontColor?.toLowerCase() === safeBoxColorHex.toLowerCase()) {
-    fontColor = '#000000'; // fallback to black text
-  }
-}
+    if (styleMode === 'outline') {
+      finalBoxColor = '&H00000000'; // no background
+      finalOutlineWidth = parseInt(outlineWidth) || 0;
+      finalOutlineColor = hexToASS(outlineColorHex);
+    }
 
-if (styleMode === 'outline') {
-  finalBoxColor = '&H00000000'; // no background
-  finalOutlineWidth = parseInt(outlineWidth) || 0;
-  finalOutlineColor = hexToASS(outlineColorHex);
-}
-
-// Log the actual values for debugging
-logInfo("🎯 RENDER MODE DEBUG", {
-  styleMode,
-  finalBoxColor,
-  finalOutlineColor,
-  finalOutlineWidth
-});
+    // Log the actual values for debugging
+    logInfo("🎯 RENDER MODE DEBUG", {
+      styleMode,
+      finalBoxColor,
+      finalOutlineColor,
+      finalOutlineWidth
+    });
 
     const style = `
 [Script Info]
