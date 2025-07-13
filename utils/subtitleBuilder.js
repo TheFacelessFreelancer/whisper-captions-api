@@ -176,13 +176,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
       // 🎯 Hero Pop logic
       if (animation === 'word-by-word') {
-        const words = cleanText.split(' ');
-        const highlighted = words.map((word, i) => {
-          const colorTag = preset === 'Hero Pop' && i === 0 ? '\\c&H00E6FE&' : '\\c&HFFFFFF&';
-          return `{${colorTag}}${word}`;
-        }).join(' ');
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
-      }
+  const words = cleanText.split(' ');
+  const highlighted = words.map(word => {
+    if (preset === 'Hero Pop') {
+      return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}${word}`;
+    }
+    return word;
+  }).join(' ');
+  return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
+}
+
 
       // ⌨ Typewriter
       if (animation === 'typewriter') {
