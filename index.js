@@ -88,7 +88,8 @@ app.post('/subtitles', async (req, res) => {
       preset,
       effects,
       caps,
-      lineLayout
+      lineLayout,
+      boxOpacity
     } = req.body;
 
     const jobId = uuidv4();
@@ -96,7 +97,7 @@ app.post('/subtitles', async (req, res) => {
 
     const fontColorAss = hexToASS(fontColorHex);
     const outlineColorAss = hexToASS(outlineColorHex);
-    const boxColorAss = hexToASS(boxColorHex);
+    const boxColorAss = hexToASS(boxColorHex, boxOpacity);
 
     logInfo("🎨 Converted ASS Colors", {
       fontColorHex,
