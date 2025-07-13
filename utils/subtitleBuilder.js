@@ -69,15 +69,15 @@ export async function buildSubtitlesFile({
     // ────────────────────────────────────────────────
     // STYLE MODE LOGIC
     // ────────────────────────────────────────────────
-    let finalOutlineWidth = 0;
-    let finalOutlineColor = '&H00000000';
-    let finalBoxColor = '&H00000000';
+ let finalOutlineWidth = 0;
+let finalOutlineColor = '&H00000000';
+let finalBoxColor = '&H00000000';
 
-    if (styleMode === 'box') {
-      finalBoxColor = boxColor; // ✅ use precomputed ASS value from index.js
-      finalOutlineWidth = enablePadding ? 3 : 1;
-      finalOutlineColor = '&H00000000';
-    }
+if (styleMode === 'box') {
+  finalBoxColor = boxColor;
+  finalOutlineColor = outlineColor;
+  finalOutlineWidth = enablePadding ? 3 : 1;
+}
 
     if (styleMode === 'outline') {
       finalBoxColor = '&H00000000'; // no background
