@@ -97,7 +97,8 @@ app.post('/subtitles', async (req, res) => {
 
     const fontColorAss = hexToASS(fontColorHex);
     const outlineColorAss = hexToASS(outlineColorHex);
-    const boxColorAss = hexToASS(boxColorHex, boxOpacity);
+    const safeBoxOpacity = typeof boxOpacity === 'number' ? boxOpacity : 80;
+    const boxColorAss = hexToASS(boxColorHex, safeBoxOpacity);
 
     logInfo("🎨 Converted ASS Colors", {
       fontColorHex,
