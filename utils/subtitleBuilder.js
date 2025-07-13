@@ -38,7 +38,7 @@ const emojiMap = {
   chill: '😎', relax: '🧘', peace: '✌️', easy: '👌', smooth: '😌',
   fast: '⚡', quick: '🚀', instant: '⏱️', speed: '🏃‍♂️', rush: '🏎️',
   boss: '👑', queen: '👸', king: '🤴', legend: '🏅', pro: '📣',
-  new: '🆕', launch: '🚀', update: '🔁', idea: '💡', build: '🧱',
+  new: '🆕', launch: '🚀', update: '🔁', build: '🧱',
   email: '📧', message: '💬', inbox: '📥', DM: '📩', alert: '🔔',
   clock: '⏰', calendar: '📅', schedule: '🗓️', late: '⌛', alarm: '🚨',
   fun: '🎈', play: '🎮', party: '🥳', vibe: '🎵', laugh: '😄',
@@ -79,6 +79,7 @@ export async function buildSubtitlesFile({
   preset,
   customX,
   customY,
+  boxPadding = 10,
   effects = {},
   caps = 'normal',
   lineLayout = 'single',
@@ -117,7 +118,8 @@ export async function buildSubtitlesFile({
     if (styleMode === 'box') {
       finalBoxColor = boxColor;
       finalOutlineColor = outlineColorHex;
-      finalOutlineWidth = enablePadding ? 3 : 1;
+      finalOutlineWidth = enablePadding || (typeof boxPadding !== 'undefined' && boxPadding > 0) ? 3 : 1;
+
       if (fontColor?.toLowerCase() === finalBoxColor?.toLowerCase()) {
         fontColor = '#000000';
       }
@@ -154,9 +156,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
     // ────────────────────────────────────────────────
-    // 7. FORMATTED CAPTIONS: preset-driven logic blocks
+    // 7. FORMATTED CAPTIONS
     // ────────────────────────────────────────────────
-    const screenWidth = 980;
+    const screenWidth = 920;
     const screenHeight = 1920;
     const avgCharWidth = fontSize * 0.55;
     const usableWidth = screenWidth - 20 - outlineWidth * 2;
@@ -175,40 +177,34 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
       const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
 
-      // 🎯 Hero Pop logic
+      // HERO POP STYLE: yellow ➝ white
       if (animation === 'word-by-word') {
-  const words = cleanText.split(' ');
-  const highlighted = words.map(word => {
-    if (preset === 'Hero Pop') {
-      return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}${word}`;
-    }
-    return word;
-  }).join(' ');
-  return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
-}
+        const words = cleanText.split(' ');
+        const highlighted = words.map(word => {
+          if (preset === 'Hero Pop') {
+            return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}${word}`;
+          }
+          return word;
+        }).join(' ');
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
+      }
 
-
-      // ⌨ Typewriter
+      // TYPEWRITER STYLE
       if (animation === 'typewriter') {
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
       }
 
-      // 🎬 Cinematic Fade
+      // CINEMATIC FADE STYLE
       if (preset === 'Cinematic Fade') {
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
       }
 
-      // 🧱 Chunked Animation Types (fall, rise, etc.)
-      if (['fall', 'rise', 'baselineup', 'panleft', 'panright'].includes(animation)) {
-        // ... (CHUNKED logic remains unchanged)
-      }
-
-      // 🧾 Default style
+      // DEFAULT
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
     }).join('\n');
 
     // ────────────────────────────────────────────────
-    // 8. FILE OUTPUT
+    // 8. OUTPUT FILE
     // ────────────────────────────────────────────────
     const content = style + formattedCaptions;
     logInfo("🧾 ASS STYLE DEBUG", { style });
