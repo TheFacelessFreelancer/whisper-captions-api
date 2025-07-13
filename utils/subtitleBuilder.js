@@ -25,7 +25,6 @@ import { logInfo, logError } from './logger.js';
 // 2. EMOJI SUPPORT FOR EMOJI POP PRESET
 // ────────────────────────────────────────────────
 const emojiMap = {
-  const emojiMap = {
   boom: '💥', explode: '💥', blast: '💣', crash: '💥', bang: '💥',
   lol: '😂', haha: '🤣', funny: '😆', joke: '😹', lmao: '😹', rofl: '🤣',
   think: '🤔', idea: '💡', plan: '🧠', thoughts: '🧩', strategy: '📊',
