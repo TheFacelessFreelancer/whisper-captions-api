@@ -62,29 +62,30 @@ function injectEmojiOnce(text) {
 // ────────────────────────────────────────────────
 // 3. MAIN EXPORT FUNCTION: buildSubtitlesFile({...})
 // ────────────────────────────────────────────────
-export async function buildSubtitlesFile({
-  jobId,
-  fontName,
-  fontSize,
-  fontColor,
-  styleMode,
-  boxColor,
-  enablePadding,
-  outlineColorHex,
-  outlineWidth,
-  shadow,
-  shadowColorHex,
-  lineSpacing,
-  animation,
-  preset,
-  customX,
-  customY,
-  effects = {},
-  caps = 'normal',
-  lineLayout = 'single',
-  captions = []
-}) {
-  styleMode = styleMode || 'box';
+export async function buildSubtitlesFile(params) {
+  // Deconstruct with defaults
+  const {
+    jobId,
+    fontName = 'Montserrat',
+    fontSize,
+    fontColor,
+    styleMode,
+    boxColor,
+    enablePadding,
+    outlineColorHex,
+    outlineWidth,
+    shadow,
+    shadowColorHex,
+    lineSpacing,
+    animation,
+    preset,
+    customX,
+    customY,
+    effects = {},
+    caps = 'normal',
+    lineLayout = 'single',
+    captions = []
+  } = params;
 
   try {
     const subtitlesDir = path.join('subtitles');
@@ -111,19 +112,11 @@ export async function buildSubtitlesFile({
         fontColor = '#000000';
       }
     }
-
     if (styleMode === 'outline') {
       finalBoxColor = '&H00000000';
       finalOutlineWidth = parseInt(outlineWidth) || 0;
       finalOutlineColor = outlineColorHex;
     }
-
-    logInfo("🎯 RENDER MODE DEBUG", {
-      styleMode,
-      finalBoxColor,
-      finalOutlineColor,
-      finalOutlineWidth
-    });
 
     const style = `
 [Script Info]
@@ -134,7 +127,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,80,80,10,1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,50,50,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -143,46 +136,31 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const screenWidth = 980;
     const screenHeight = 1920;
     const avgCharWidth = fontSize * 0.55;
-    const usableWidth = screenWidth - 20 - outlineWidth * 2;
+    const usableWidth = screenWidth - 100;
     const maxChars = Math.floor(usableWidth / avgCharWidth);
 
     const formattedCaptions = captions.map(caption => {
-      const rawText = caption.text;
-      let cleanText = escapeText(rawText);
-      if (preset === 'Emoji Pop') cleanText = injectEmojiOnce(cleanText);
-      cleanText = applyCaps(cleanText);
+      let text = applyCaps(escapeText(caption.text));
+      if (preset === 'Emoji Pop') text = injectEmojiOnce(text);
+      const x = screenWidth / 2 + customX;
+      const y = screenHeight / 2 - customY;
+      const pos = `\\an5\\pos(${x},${y})`;
+      const anim = getAnimationTags(text, animation, caption.start, caption.end, y);
 
-      const adjustedX = screenWidth / 2 + customX;
-      const adjustedY = screenHeight / 2 - customY;
-      const wrapOverride = ['fall', 'rise', 'panleft', 'panright', 'baselineup'].includes(animation) ? '\\q2' : '';
-      const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
-      const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
-
-      if (animation === 'word-by-word') {
-        const words = cleanText.split(' ');
-        const highlighted = words.map(word => {
-          if (preset === 'Hero Pop') {
-            return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word;
-          }
-          return word;
-        }).join(' ');
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
-      }
-
-      if (animation === 'typewriter') {
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
+      if (preset === 'Hero Pop' && animation === 'word-by-word') {
+        const words = text.split(' ').map(w => `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + w).join(' ');
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${words}`;
       }
 
       if (preset === 'Cinematic Fade') {
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}{\\fade(0,255,0,0,300,800)}{\\c&HDDDDDD&}${cleanText}`;
+        const cinematicTags = `\\fad(500,500)\\move(${x},${y},${x},${y - 20})\\c&H888888&\\t(0,800,\\c&HFFFFFF&)`;
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${cinematicTags}}${text}`;
       }
 
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${text}`;
     }).join('\n');
 
-    const content = style + formattedCaptions;
-    logInfo("🧾 ASS STYLE DEBUG", { style });
-    await fs.promises.writeFile(filePath, content);
+    await fs.promises.writeFile(filePath, style + formattedCaptions);
     logInfo(`✅ Subtitle file written: ${filePath}`);
     return filePath;
   } catch (err) {
