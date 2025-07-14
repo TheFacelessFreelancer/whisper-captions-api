@@ -1,15 +1,9 @@
 /**
  * Builds an ASS subtitle file with full support for:
- * - Timing logic
- * - Center-based \pos(x,y) alignment
- * - Font, box, and text effects
- * - Multiple captions
- * - Dynamic animation effects
- *
- * This version isolates all animation types:
- * - INLINE: word-by-word, typewriter
- * - CHUNKED: fall, rise, panleft, panright, etc.
- * - DEFAULT: fade, basic styles
+ * - Preset-based font, box, and animation styling
+ * - Preset-based alignment and caps logic
+ * - Dynamic emoji injection (for Emoji Pop preset)
+ * - Clean structure for cinematic and animated effects
  */
 
 // ────────────────────────────────────────────────
@@ -39,7 +33,7 @@ const emojiMap = {
   fast: '⚡', quick: '🚀', instant: '⏱️', speed: '🏃‍♂️', rush: '🏎️',
   boss: '👑', queen: '👸', king: '🤴', legend: '🏅', pro: '📣',
   new: '🆕', launch: '🚀', update: '🔁', build: '🧱',
-  email: '📧', message: '💬', inbox: '📥', DM: '📩', alert: '🔔',
+  email: '📧', message: '💬', inbox: '📥', dm: '📩', alert: '🔔',
   clock: '⏰', calendar: '📅', schedule: '🗓️', late: '⌛', alarm: '🚨',
   fun: '🎈', play: '🎮', party: '🥳', vibe: '🎵', laugh: '😄',
   brain: '🧠', spark: '⚡', logic: '📐', answer: '✔️', tip: '💡',
@@ -62,31 +56,25 @@ function injectEmojiOnce(text) {
 // ────────────────────────────────────────────────
 // 3. MAIN EXPORT FUNCTION: buildSubtitlesFile({...})
 // ────────────────────────────────────────────────
-export async function buildSubtitlesFile(params) {
-  // Deconstruct with defaults
-  const {
-    jobId,
-    fontName = 'Montserrat',
-    fontSize,
-    fontColor,
-    styleMode,
-    boxColor,
-    enablePadding,
-    outlineColorHex,
-    outlineWidth,
-    shadow,
-    shadowColorHex,
-    lineSpacing,
-    animation,
-    preset,
-    customX,
-    customY,
-    effects = {},
-    caps = 'normal',
-    lineLayout = 'single',
-    captions = []
-  } = params;
-
+export async function buildSubtitlesFile({
+  jobId,
+  fontName = 'Montserrat-Bold',
+  fontSize,
+  fontColor,
+  boxColorHex,
+  outlineColorHex,
+  outlineWidth,
+  shadow,
+  shadowColorHex,
+  lineSpacing,
+  animation,
+  preset,
+  customX,
+  customY,
+  effects = {},
+  caps = 'normal',
+  captions = []
+}) {
   try {
     const subtitlesDir = path.join('subtitles');
     const filePath = path.join(subtitlesDir, `${jobId}.ass`);
@@ -100,23 +88,11 @@ export async function buildSubtitlesFile(params) {
 
     const escapeText = (text) => text.replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/"/g, '\\"');
 
-    let finalOutlineWidth = 0;
-    let finalOutlineColor = '&H00000000';
-    let finalBoxColor = '&H00000000';
-
-    if (styleMode === 'box') {
-      finalBoxColor = boxColor;
-      finalOutlineColor = outlineColorHex;
-      finalOutlineWidth = enablePadding ? 3 : 1;
-      if (fontColor?.toLowerCase() === finalBoxColor?.toLowerCase()) {
-        fontColor = '#000000';
-      }
-    }
-    if (styleMode === 'outline') {
-      finalBoxColor = '&H00000000';
-      finalOutlineWidth = parseInt(outlineWidth) || 0;
-      finalOutlineColor = outlineColorHex;
-    }
+    const hasBox = !!boxColorHex;
+    const borderStyle = hasBox ? 3 : 1;
+    const finalOutlineWidth = hasBox ? 0 : (outlineWidth || 0);
+    const finalOutlineColor = hasBox ? '&H00000000' : hexToASS(outlineColorHex);
+    const finalBoxColor = hasBox ? hexToASS(boxColorHex) : '&H00000000';
 
     const style = `
 [Script Info]
@@ -127,7 +103,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,50,50,10,1
+Style: Default,${fontName},${fontSize},${hexToASS(fontColor)},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,${borderStyle},${finalOutlineWidth},${shadow},7,80,80,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -135,36 +111,36 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     const screenWidth = 980;
     const screenHeight = 1920;
-    const avgCharWidth = fontSize * 0.55;
-    const usableWidth = screenWidth - 100;
-    const maxChars = Math.floor(usableWidth / avgCharWidth);
 
     const formattedCaptions = captions.map(caption => {
-      let text = applyCaps(escapeText(caption.text));
-      if (preset === 'Emoji Pop') text = injectEmojiOnce(text);
-      const x = screenWidth / 2 + customX;
-      const y = screenHeight / 2 - customY;
-      const pos = `\\an5\\pos(${x},${y})`;
-      const anim = getAnimationTags(text, animation, caption.start, caption.end, y);
+      let cleanText = escapeText(caption.text);
+      if (preset === 'Emoji Pop') cleanText = injectEmojiOnce(cleanText);
+      cleanText = applyCaps(cleanText);
 
-      if (preset === 'Hero Pop' && animation === 'word-by-word') {
-        const words = text.split(' ').map(w => `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + w).join(' ');
+      const pos = `\\an5\\pos(${screenWidth / 2 + customX},${screenHeight / 2 - customY})`;
+      const anim = getAnimationTags(cleanText, animation, caption.start, caption.end);
+
+      if (animation === 'word-by-word') {
+        const words = cleanText.split(' ').map(word => {
+          return preset === 'Hero Pop' ? `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word : word;
+        }).join(' ');
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${words}`;
       }
 
       if (preset === 'Cinematic Fade') {
-        const cinematicTags = `\\fad(500,500)\\move(${x},${y},${x},${y - 20})\\c&H888888&\\t(0,800,\\c&HFFFFFF&)`;
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${cinematicTags}}${text}`;
+        const fadeAnim = `\\move(${screenWidth / 2 - 120 + customX},${screenHeight / 2 - customY},${screenWidth / 2 + customX},${screenHeight / 2 - customY})\\fad(200,200)`;
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${fadeAnim}}${cleanText}`;
       }
 
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${text}`;
+      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
     }).join('\n');
 
-    await fs.promises.writeFile(filePath, style + formattedCaptions);
+    const content = style + formattedCaptions;
+    await fs.promises.writeFile(filePath, content);
     logInfo(`✅ Subtitle file written: ${filePath}`);
     return filePath;
   } catch (err) {
-    logError("Subtitle Builder Error", err);
+    logError('Subtitle Builder Error', err);
     throw err;
   }
 }
