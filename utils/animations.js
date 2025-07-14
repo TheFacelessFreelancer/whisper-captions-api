@@ -11,9 +11,11 @@
  * - Baseline Down
  * - Pan Right
  * - Pan Left
- *
- * All animation blocks are modular and independently testable.
+ * - Hero Pop (Preset)
+ * - Emoji Pop (Preset)
+ * - Cinematic Fade (Preset)
  */
+
 // ────────────────────────────────────────────────
 // IMPORTS
 // ────────────────────────────────────────────────
@@ -27,13 +29,13 @@ function fadeAnimation() {
 }
 
 // ────────────────────────────────────────────────
-// TYPEWRITER ANIMATION (character-by-character)
+// TYPEWRITER ANIMATION
 // ────────────────────────────────────────────────
 function typewriterAnimation(text) {
   return text
     .split('')
     .map((char, i) =>
-      `{\\alpha&HFF&\\t(${i * 80},${(i + 1) * 80},\\alpha&H00&)}${char}`
+      `{\\alpha&HFF&\\t(${i * 80},${(i + 1) * 80},\\alpha&H00&)}` + char
     )
     .join('');
 }
@@ -45,93 +47,74 @@ function wordByWordAnimation(text) {
   return text
     .split(' ')
     .map((word, i) => 
-      `{\\alpha&HFF&\\t(${i * 200},${(i + 1) * 200},\\alpha&H00&)}${word}`
+      `{\\alpha&HFF&\\t(${i * 200},${(i + 1) * 200},\\alpha&H00&)}` + word
     )
     .join(' ');
 }
 
 // ────────────────────────────────────────────────
-// FALL ANIMATION (One-phase drop from above)
+// FALL ANIMATION
 // ────────────────────────────────────────────────
-/**
- * Description:
- *   A fast fall-in animation where text fades in while dropping
- *   from 100px above its final position. Uses \move() and \alpha tags.
- *
- * ASS Tag Logic (combined with \move externally):
- *   \alpha&HFF&           ; invisible at start
- *   \t(0,100,\alpha&H00&) ; fade in over 100ms
- */
 function fallAnimation() {
   return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
 
 // ────────────────────────────────────────────────
-// RISE ANIMATION (One-phase upward motion)
+// RISE ANIMATION
 // ────────────────────────────────────────────────
-/**
- * Description:
- *   Subtitle text rises from 100px below its final position
- *   and fades in as it ascends. It’s the exact inverse of the Fall animation.
- *
- * ASS Tag Logic:
- *   \alpha&HFF&                      ; fully transparent at start
- *   \t(0,100,\alpha&H00&)           ; fade in over 100ms
- *
- * Motion is handled via \move(...) externally in subtitleBuilder.js
- */
 function riseAnimation() {
   return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
 
 // ────────────────────────────────────────────────
-// BASELINE UP ANIMATION (slide upward through a static mask)
+// BASELINE UP ANIMATION
 // ────────────────────────────────────────────────
-/**
- * Description:
- *   Simulates text rising up from an invisible floor.
- *   The text moves upward through a fixed vertical mask window,
- *   revealing itself from top to bottom. No scaling involved.
- *
- * ASS Tag Logic:
- *   \clip(0,900,980,1020)                ; static vertical mask
- *   \alpha&HFF&                          ; fully transparent at start
- *   \t(0,100,\alpha&H00&)               ; fade in over first 100ms
- *
- * Movement handled separately with \move(...) in subtitleBuilder.js
- */
 function baselineupAnimation(clipY) {
   return `\\clip(0,${clipY},980,1920)\\alpha&HFF&\\t(0,100,\\alpha&H00&)`;
 }
 
 // ────────────────────────────────────────────────
-// PAN LEFT ANIMATION (slides in from left to center)
+// PAN LEFT ANIMATION
 // ────────────────────────────────────────────────
-/**
- * Description:
- *   Text slides from left edge into center.
- *   Uses horizontal \move(...) motion + fade-in.
- *   Ends at adjustedX.
- *
- * Motion handled by \move() in subtitleBuilder.js.
- */
 function panleftAnimation() {
   return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
 }
 
 // ────────────────────────────────────────────────
-// PAN RIGHT ANIMATION (slides in from right to center)
+// PAN RIGHT ANIMATION
 // ────────────────────────────────────────────────
-/**
- * Description:
- *   Text slides from right edge into center.
- *   Uses horizontal \move(...) motion + fade-in.
- *   Ends at adjustedX.
- *
- * Motion handled by \move() in subtitleBuilder.js.
- */
 function panrightAnimation() {
   return '\\alpha&HFF&\\t(0,100,\\alpha&H00&)';
+}
+
+// ────────────────────────────────────────────────
+// HERO POP ANIMATION (Preset)
+// ────────────────────────────────────────────────
+function heroPopAnimation(text) {
+  return text
+    .split(' ')
+    .map(word => `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word)
+    .join(' ');
+}
+
+// ────────────────────────────────────────────────
+// EMOJI POP ANIMATION (Preset)
+// ────────────────────────────────────────────────
+function emojiPopAnimation(text) {
+  return text
+    .split(' ')
+    .map((word, i) => {
+      const delay = i * 100;
+      return `{\\fs0\\t(${delay},${delay + 200},\\fs45)}` + word;
+    })
+    .join(' ');
+}
+
+// ────────────────────────────────────────────────
+// CINEMATIC FADE (Preset)
+// ────────────────────────────────────────────────
+function cinematicFadeAnimation() {
+  return '\\blur3\\fscx90\\fscy90\\t(0,200,\\blur0\\fscx100\\fscy100)';
 }
 
 // ────────────────────────────────────────────────
@@ -149,7 +132,7 @@ function parseAssTime(timeStr) {
 }
 
 // ────────────────────────────────────────────────
-// MAIN EXPORT FUNCTION: getAnimationTags()
+// MAIN EXPORT FUNCTION
 // ────────────────────────────────────────────────
 export function getAnimationTags(text, type, start, end, adjustedY = null) {
   logProgress("🎞️ Building animation tag:", type);
@@ -159,7 +142,7 @@ export function getAnimationTags(text, type, start, end, adjustedY = null) {
     case 'typewriter':
       return typewriterAnimation(text);
     case 'word-by-word':
-      return wordByWordAnimation(text, start, end);
+      return wordByWordAnimation(text);
     case 'fall':
       return fallAnimation();
     case 'rise':
@@ -168,12 +151,18 @@ export function getAnimationTags(text, type, start, end, adjustedY = null) {
       return baselineupAnimation();
     case 'baselinedown':
       return baselinedownAnimation();
-      case 'panright':
+    case 'panright':
       return panrightAnimation();
-      case 'panleft':
+    case 'panleft':
       return panleftAnimation();
+    case 'hero':
+      return heroPopAnimation(text);
+    case 'emoji':
+      return emojiPopAnimation(text);
+    case 'cinematic':
+      return cinematicFadeAnimation();
     default:
-       logError("❌ Unknown animation type", type);
+      logError("❌ Unknown animation type", type);
       return '';
   }
 }
