@@ -67,7 +67,7 @@ export async function buildSubtitlesFile({
   fontName,
   fontSize,
   fontColor,
-  styleMode = 'box',
+  styleMode,
   boxColor,
   enablePadding,
   outlineColorHex,
@@ -79,36 +79,26 @@ export async function buildSubtitlesFile({
   preset,
   customX,
   customY,
-  boxPadding = 10,
   effects = {},
   caps = 'normal',
   lineLayout = 'single',
   captions = []
 }) {
+  styleMode = styleMode || 'box';
+
   try {
-    // ────────────────────────────────────────────────
-    // 4. FILE SETUP
-    // ────────────────────────────────────────────────
     const subtitlesDir = path.join('subtitles');
     const filePath = path.join(subtitlesDir, `${jobId}.ass`);
     await fs.promises.mkdir(subtitlesDir, { recursive: true });
 
-    // ────────────────────────────────────────────────
-    // 5. TEXT TRANSFORM HELPERS
-    // ────────────────────────────────────────────────
     const applyCaps = (text) => {
       if (caps === 'allcaps') return text.toUpperCase();
       if (caps === 'titlecase') return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
       return text;
     };
 
-    const escapeText = (text) => {
-      return text.replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/"/g, '\\"');
-    };
+    const escapeText = (text) => text.replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/"/g, '\\"');
 
-    // ────────────────────────────────────────────────
-    // 6. STYLE HEADER AND STYLE MODE LOGIC
-    // ────────────────────────────────────────────────
     let finalOutlineWidth = 0;
     let finalOutlineColor = '&H00000000';
     let finalBoxColor = '&H00000000';
@@ -116,10 +106,9 @@ export async function buildSubtitlesFile({
     if (styleMode === 'box') {
       finalBoxColor = boxColor;
       finalOutlineColor = outlineColorHex;
-      finalOutlineWidth = enablePadding || (typeof boxPadding !== 'undefined' && boxPadding > 0) ? 3 : 1;
-
+      finalOutlineWidth = enablePadding ? 3 : 1;
       if (fontColor?.toLowerCase() === finalBoxColor?.toLowerCase()) {
-        fontColor = '#000000'; // fallback for contrast
+        fontColor = '#000000';
       }
     }
 
@@ -145,56 +134,57 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,${boxPadding},${boxPadding},10,1
+Style: Default,${fontName},${fontSize},${fontColor},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,3,${finalOutlineWidth},${shadow},7,80,80,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-    // ────────────────────────────────────────────────
-    // 7. FORMATTED CAPTIONS: preset-driven logic blocks
-    // ────────────────────────────────────────────────
     const screenWidth = 980;
     const screenHeight = 1920;
-    const adjustedX = screenWidth / 2 + customX;
-    const adjustedY = screenHeight / 2 - customY;
-    const pos = `\\an5\\pos(${adjustedX},${adjustedY})`;
+    const avgCharWidth = fontSize * 0.55;
+    const usableWidth = screenWidth - 20 - outlineWidth * 2;
+    const maxChars = Math.floor(usableWidth / avgCharWidth);
 
     const formattedCaptions = captions.map(caption => {
       const rawText = caption.text;
-
       let cleanText = escapeText(rawText);
       if (preset === 'Emoji Pop') cleanText = injectEmojiOnce(cleanText);
       cleanText = applyCaps(cleanText);
 
+      const adjustedX = screenWidth / 2 + customX;
+      const adjustedY = screenHeight / 2 - customY;
+      const wrapOverride = ['fall', 'rise', 'panleft', 'panright', 'baselineup'].includes(animation) ? '\\q2' : '';
+      const pos = `\\an5${wrapOverride}\\pos(${adjustedX},${adjustedY})`;
       const anim = getAnimationTags(cleanText, animation, caption.start, caption.end, adjustedY);
 
-      if (preset === 'Hero Pop' && animation === 'word-by-word') {
+      if (animation === 'word-by-word') {
         const words = cleanText.split(' ');
-        const highlighted = words.map(word => `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word).join(' ');
+        const highlighted = words.map(word => {
+          if (preset === 'Hero Pop') {
+            return `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word;
+          }
+          return word;
+        }).join(' ');
         return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${highlighted}`;
       }
 
-      if (preset === 'Cinematic Fade') {
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
+      if (animation === 'typewriter') {
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}`;
       }
 
-      if (['fall', 'rise', 'baselineup', 'panleft', 'panright'].includes(animation)) {
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
+      if (preset === 'Cinematic Fade') {
+        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}{\\fade(0,255,0,0,300,800)}{\\c&HDDDDDD&}${cleanText}`;
       }
 
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
     }).join('\n');
 
-    // ────────────────────────────────────────────────
-    // 8. FILE OUTPUT
-    // ────────────────────────────────────────────────
     const content = style + formattedCaptions;
     logInfo("🧾 ASS STYLE DEBUG", { style });
     await fs.promises.writeFile(filePath, content);
     logInfo(`✅ Subtitle file written: ${filePath}`);
     return filePath;
-
   } catch (err) {
     logError("Subtitle Builder Error", err);
     throw err;
