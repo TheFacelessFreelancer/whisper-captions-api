@@ -58,7 +58,7 @@ function injectEmojiOnce(text) {
 // ────────────────────────────────────────────────
 export async function buildSubtitlesFile({
   jobId,
-  fontName = 'Montserrat-Bold',
+  fontName = 'Default',
   fontSize,
   fontColor,
   boxColorHex,
@@ -69,8 +69,8 @@ export async function buildSubtitlesFile({
   lineSpacing,
   animation,
   preset,
-  customX,
-  customY,
+  customX = 0,
+  customY = 0,
   effects = {},
   caps = 'normal',
   captions = []
@@ -88,6 +88,14 @@ export async function buildSubtitlesFile({
 
     const escapeText = (text) => text.replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/"/g, '\\"');
 
+    // Default font logic
+    const presetFonts = {
+      'Hero Pop': { fontName: 'Montserrat-Bold', fontSize: 60 },
+      'Emoji Pop': { fontName: 'Poppins-Bold', fontSize: 58 },
+      'Cinematic Fade': { fontName: 'Montserrat-Bold', fontSize: 64 }
+    };
+    const resolvedFont = (fontName === 'Default' && presetFonts[preset]) ? presetFonts[preset] : { fontName, fontSize };
+
     const hasBox = !!boxColorHex;
     const borderStyle = hasBox ? 3 : 1;
     const finalOutlineWidth = hasBox ? 0 : (outlineWidth || 0);
@@ -98,18 +106,18 @@ export async function buildSubtitlesFile({
 [Script Info]
 Title: Captions
 ScriptType: v4.00+
-PlayResX: 920
+PlayResX: 1080
 PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${hexToASS(fontColor)},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,${borderStyle},${finalOutlineWidth},${shadow},7,80,80,10,1
+Style: Default,${resolvedFont.fontName},${resolvedFont.fontSize},${hexToASS(fontColor)},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,${borderStyle},${finalOutlineWidth},${shadow},7,80,80,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-    const screenWidth = 980;
+    const screenWidth = 1080;
     const screenHeight = 1920;
 
     const formattedCaptions = captions.map(caption => {
@@ -118,19 +126,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       cleanText = applyCaps(cleanText);
 
       const pos = `\\an5\\pos(${screenWidth / 2 + customX},${screenHeight / 2 - customY})`;
-      const anim = getAnimationTags(cleanText, animation, caption.start, caption.end);
-
-      if (animation === 'word-by-word') {
-        const words = cleanText.split(' ').map(word => {
-          return preset === 'Hero Pop' ? `{\\c&H00E6FE&\\t(0,200,\\c&HFFFFFF&)}` + word : word;
-        }).join(' ');
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${words}`;
-      }
-
-      if (preset === 'Cinematic Fade') {
-        const fadeAnim = `\\blur7\\t(0,300,\\blur0)\\fscx90\\fscy90\\t(0,500,\\fscx100\\fscy100)`;
-        return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}${fadeAnim}}${cleanText}`;
-      }
+      const anim = getAnimationTags(cleanText, preset.toLowerCase().replace(/ /g, ''), caption.start, caption.end);
 
       return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
     }).join('\n');
