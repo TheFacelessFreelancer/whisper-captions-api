@@ -16,7 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { hexToASS } from './colors.js';
 import { getAnimationTags } from './animations.js';
-import { injectEmojiOnce } from './utils/emojiMap.js';
+import { injectEmojiOnce } from './emojiMap.js';
 import { logInfo, logError } from './logger.js';
 
 // ────────────────────────────────────────────────
