@@ -4,6 +4,7 @@
  * Handles:
  * - Subtitle creation via ASS styling
  * - FFmpeg rendering (modularized)
+ * - Whisper transcription
  * - Cloudinary video delivery
  * - Job ID returns for polling (immediate response)
  * - Cross-origin and logging support
@@ -11,7 +12,6 @@
  *
  * ────────────────────────────────────────────────
  * TABLE OF CONTENTS
- * ────────────────────────────────────────────────
  * 1. IMPORTS AND DEPENDENCIES
  * 2. IN-MEMORY CACHE FOR JOB RESULTS
  * 3. EXPRESS SERVER SETUP
@@ -31,9 +31,8 @@ import morgan from 'morgan';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { buildSubtitlesFile } from './utils/subtitleBuilder.js';
-import { hexToASS } from './utils/colors.js';
-import { uploadToCloudinary } from './utils/cloudinary.js';
 import { renderVideoWithSubtitles, extractAudio } from './utils/ffmpeg.js';
+import { uploadToCloudinary } from './utils/cloudinary.js';
 import whisperTranscribe from './utils/whisper.js';
 import { logInfo, logProgress, logError } from './utils/logger.js';
 
@@ -58,8 +57,8 @@ const secondsToAss = (seconds) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
-  return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms}`;
+  const cs = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
+  return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs}`;
 };
 
 // ────────────────────────────────────────────────
@@ -70,8 +69,8 @@ app.post('/subtitles', async (req, res) => {
     const {
       videoUrl,
       fileName,
-      captionStyle,
-      alignment,
+      captionStyle,   // "Hero Pop" | "Emoji Pop" | "Cinematic Fade"
+      alignment,      // "Top-Safe" | "Center" | "Bottom-Safe"
       fontName,
       fontSize,
       fontColorHex,
@@ -88,26 +87,29 @@ app.post('/subtitles', async (req, res) => {
     const jobId = uuidv4();
     const safeFileName = fileName || jobId;
 
-    // Immediate response
+    // Immediate response to Make.com
     res.json({ jobId, success: true });
     logInfo('🚀 Queued job', { jobId });
 
-    // Background rendering
+    // Background processing (non-blocking)
     setTimeout(async () => {
       try {
         await fs.promises.mkdir('output', { recursive: true });
 
+        // 1) Extract audio
         const audioPath = `output/${safeFileName}.mp3`;
         await extractAudio(videoUrl, audioPath);
 
+        // 2) Transcribe with Whisper
         const whisperRes = await whisperTranscribe(audioPath);
         const captions = whisperRes.segments.map(s => ({
           start: secondsToAss(s.start),
-          end: secondsToAss(s.end),
-          text: s.text.trim()
+          end:   secondsToAss(s.end),
+          text:  s.text.trim()
         }));
         logProgress('Captions Generated', captions);
 
+        // 3) Build ASS file
         const subtitleFilePath = await buildSubtitlesFile({
           jobId,
           captionStyle,
@@ -126,12 +128,15 @@ app.post('/subtitles', async (req, res) => {
           captions
         });
 
+        // 4) Render video
         const videoOutput = `output/${safeFileName}.mp4`;
         await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutput);
-        const finalUrl = await uploadToCloudinary(videoOutput, `captions-app/${safeFileName}`);
 
+        // 5) Upload to Cloudinary
+        const finalUrl = await uploadToCloudinary(videoOutput, `captions-app/${safeFileName}`);
         jobResults[jobId] = { success: true, videoUrl: finalUrl };
         logInfo('🎬 Rendering complete', { jobId, videoUrl: finalUrl });
+
       } catch (bgErr) {
         logError('Background processing error', bgErr);
         jobResults[jobId] = { success: false, error: bgErr.message };
