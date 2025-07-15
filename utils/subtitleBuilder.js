@@ -76,7 +76,7 @@ export async function buildSubtitlesFile({
     // ────────────────────────────────────────────────
     const applyCaps = t => {
       if (caps === 'allcaps') return t.toUpperCase();
-      if (caps === 'titlecase') return t.replace(/\w\S*/g, w => w[0].toUpperCase()+w.slice(1).toLowerCase());
+      if (caps === 'titlecase') return t.replace(/\w\S*/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
       return t;
     };
     const escapeText = t => t.replace(/{/g,'\\{').replace(/}/g,'\\}').replace(/"/g,'\\"');
@@ -88,7 +88,7 @@ export async function buildSubtitlesFile({
     const borderStyle = hasBox ? 3 : 1;
     const finalOutlineColor = hasBox ? '&H00000000' : hexToASS(outlineColorHex);
     const finalBoxColor     = hasBox ? hexToASS(boxColorHex) : '&H00000000';
-    const finalOutlineWidth = hasBox ? 0 : (outlineWidth||0);
+    const finalOutlineWidth = hasBox ? 0 : (outlineWidth || 0);
 
     const style = `
 [Script Info]
@@ -118,8 +118,8 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
       let t = applyCaps(escapeText(text.trim()));
       if (preset === 'Emoji Pop') t = injectEmojiOnce(t);
 
-      const adjustedX = centerX + (customX||0);
-      const adjustedY = centerY - (customY||0);
+      const adjustedX = centerX + (customX || 0);
+      const adjustedY = centerY - (customY || 0);
       const posTag    = `\\an5\\pos(${adjustedX},${adjustedY})`;
       const animTag   = getAnimationTags(t, animKey, start, end, adjustedY);
 
