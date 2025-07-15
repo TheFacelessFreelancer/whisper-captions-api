@@ -69,8 +69,8 @@ app.post('/subtitles', async (req, res) => {
     const {
       videoUrl,
       fileName,
-      captionStyle,   // "Hero Pop" | "Emoji Pop" | "Cinematic Fade"
-      alignment,      // "Top-Safe" | "Center" | "Bottom-Safe"
+      captionStyle,    // "Hero Pop" | "Emoji Pop" | "Cinematic Fade"
+      alignment,       // "Top-Safe" | "Center" | "Bottom-Safe"
       fontName,
       fontSize,
       fontColorHex,
@@ -87,20 +87,20 @@ app.post('/subtitles', async (req, res) => {
     const jobId = uuidv4();
     const safeFileName = fileName || jobId;
 
-    // Immediate response to Make.com
+    // Immediate response to client
     res.json({ jobId, success: true });
     logInfo('🚀 Queued job', { jobId });
 
-    // Background processing (non-blocking)
+    // Background rendering (non-blocking)
     setTimeout(async () => {
       try {
         await fs.promises.mkdir('output', { recursive: true });
 
-        // 1) Extract audio
+        // 1️⃣ Extract audio
         const audioPath = `output/${safeFileName}.mp3`;
         await extractAudio(videoUrl, audioPath);
 
-        // 2) Transcribe with Whisper
+        // 2️⃣ Transcription
         const whisperRes = await whisperTranscribe(audioPath);
         const captions = whisperRes.segments.map(s => ({
           start: secondsToAss(s.start),
@@ -109,7 +109,7 @@ app.post('/subtitles', async (req, res) => {
         }));
         logProgress('Captions Generated', captions);
 
-        // 3) Build ASS file
+        // 3️⃣ Build ASS file
         const subtitleFilePath = await buildSubtitlesFile({
           jobId,
           captionStyle,
@@ -128,11 +128,11 @@ app.post('/subtitles', async (req, res) => {
           captions
         });
 
-        // 4) Render video
+        // 4️⃣ Render video with subtitles
         const videoOutput = `output/${safeFileName}.mp4`;
         await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutput);
 
-        // 5) Upload to Cloudinary
+        // 5️⃣ Upload to Cloudinary
         const finalUrl = await uploadToCloudinary(videoOutput, `captions-app/${safeFileName}`);
         jobResults[jobId] = { success: true, videoUrl: finalUrl };
         logInfo('🎬 Rendering complete', { jobId, videoUrl: finalUrl });
