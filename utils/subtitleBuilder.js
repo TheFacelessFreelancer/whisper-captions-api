@@ -1,140 +1,140 @@
 /**
- * Builds an ASS subtitle file with full support for:
- * - Preset-based font, box, and animation styling
- * - Preset-based alignment and caps logic
- * - Dynamic emoji injection (for Emoji Pop preset)
- * - Clean structure for cinematic and animated effects
+ * subtitleBuilder.js
+ *
+ * Builds an ASS subtitle file with:
+ * - Preset-based font & size
+ * - Modular animations via animations.js
+ * - Emoji injection via utils/emojiMap.js (Emoji Pop)
+ * - Alignment presets (Top-Safe, Center, Bottom-Safe) on an 80px side-margin canvas
+ * - Clean ASS header & events
  */
 
 // ────────────────────────────────────────────────
-// 1. IMPORTS AND DEPENDENCIES
+// 1. IMPORTS
 // ────────────────────────────────────────────────
 import fs from 'fs';
 import path from 'path';
 import { hexToASS } from './colors.js';
 import { getAnimationTags } from './animations.js';
+import { injectEmojiOnce } from './utils/emojiMap.js';
 import { logInfo, logError } from './logger.js';
 
 // ────────────────────────────────────────────────
-// 2. EMOJI SUPPORT FOR EMOJI POP PRESET
-// ────────────────────────────────────────────────
-const emojiMap = {
-  boom: '💥', explode: '💥', blast: '💣', crash: '💥', bang: '💥',
-  lol: '😂', haha: '🤣', funny: '😆', joke: '😹', lmao: '😹', rofl: '🤣',
-  think: '🤔', idea: '💡', plan: '🧠', thoughts: '🧩', strategy: '📊',
-  fire: '🔥', hot: '🥵', spicy: '🌶️', lit: '💯', burning: '🚒',
-  heart: '❤️', love: '😍', crush: '😘', hug: '🤗', sweet: '🍭',
-  magic: '✨', wow: '😲', surprise: '🎉', shine: '🌟', sparkle: '💫',
-  money: '💸', rich: '💰', paid: '🤑', cashback: '🏦', coins: '🪙',
-  sale: '🛍️', shop: '🛒', groceries: '🧺', discount: '🏷️', basket: '🧃',
-  win: '🏆', success: '🚀', goal: '🎯', score: '📈', reward: '🎁',
-  sad: '😢', cry: '😭', tired: '🥱', stress: '😩', broke: '😔',
-  chill: '😎', relax: '🧘', peace: '✌️', easy: '👌', smooth: '😌',
-  fast: '⚡', quick: '🚀', instant: '⏱️', speed: '🏃‍♂️', rush: '🏎️',
-  boss: '👑', queen: '👸', king: '🤴', legend: '🏅', pro: '📣',
-  new: '🆕', launch: '🚀', update: '🔁', build: '🧱',
-  email: '📧', message: '💬', inbox: '📥', dm: '📩', alert: '🔔',
-  clock: '⏰', calendar: '📅', schedule: '🗓️', late: '⌛', alarm: '🚨',
-  fun: '🎈', play: '🎮', party: '🥳', vibe: '🎵', laugh: '😄',
-  brain: '🧠', spark: '⚡', logic: '📐', answer: '✔️', tip: '💡',
-  verified: '✅', official: '📌', locked: '🔒', safe: '🛡️', trusted: '🤝',
-  content: '📝', script: '📄', caption: '💬', format: '🧾', code: '💻',
-  avatar: '🧍‍♀️', voice: '🎤', mic: '🎙️', camera: '🎥', video: '📹',
-  viral: '📈', growth: '🌱', viralhack: '🧨', boost: '🚀', automation: '🤖'
-};
-
-function injectEmojiOnce(text) {
-  for (const [keyword, emoji] of Object.entries(emojiMap)) {
-    const regex = new RegExp(`\\b(${keyword})\\b`, 'i');
-    if (regex.test(text)) {
-      return text.replace(regex, `$1${emoji}`);
-    }
-  }
-  return text;
-}
-
-// ────────────────────────────────────────────────
-// 3. MAIN EXPORT FUNCTION: buildSubtitlesFile({...})
+// 2. MAIN FUNCTION: buildSubtitlesFile({...})
 // ────────────────────────────────────────────────
 export async function buildSubtitlesFile({
   jobId,
+  captionStyle,    // "Hero Pop" | "Emoji Pop" | "Cinematic Fade"
+  alignment,       // "Top-Safe" | "Center" | "Bottom-Safe"
   fontName = 'Default',
-  fontSize,
+  fontSize = null,
   fontColor,
   boxColorHex,
   outlineColorHex,
   outlineWidth,
   shadow,
-  shadowColorHex,
-  lineSpacing,
-  animation,
-  preset,
+  lineSpacing = 0,
+  caps = 'normal',
   customX = 0,
   customY = 0,
-  effects = {},
-  caps = 'normal',
   captions = []
 }) {
   try {
-    const subtitlesDir = path.join('subtitles');
-    const filePath = path.join(subtitlesDir, `${jobId}.ass`);
-    await fs.promises.mkdir(subtitlesDir, { recursive: true });
+    // ────────────────────────────────────────────────
+    // 3. CANVAS & ALIGNMENT (80px margins)
+    // ────────────────────────────────────────────────
+    const canvasWidth  = 1080;
+    const canvasHeight = 1920;
+    const sideMargin   = 80;
+    const usableWidth  = canvasWidth - 2 * sideMargin; // 920
+    const centerX      = sideMargin + usableWidth / 2;  // 540
+    const centerY      = canvasHeight / 2;              // 960
 
-    const applyCaps = (text) => {
-      if (caps === 'allcaps') return text.toUpperCase();
-      if (caps === 'titlecase') return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-      return text;
+    switch ((alignment || '').toLowerCase()) {
+      case 'top-safe':    customY =  750; break;
+      case 'center':      customY =    0; break;
+      case 'bottom-safe': customY = -350; break;
+      // else leave customY as provided
+    }
+
+    // ────────────────────────────────────────────────
+    // 4. FONT & SIZE PRESETS
+    // ────────────────────────────────────────────────
+    const fontPresets = {
+      'Hero Pop':       { name: 'Montserrat-Bold', size: 60 },
+      'Emoji Pop':      { name: 'Poppins-Bold',    size: 58 },
+      'Cinematic Fade': { name: 'Montserrat-Bold', size: 64 }
     };
+    const preset = captionStyle;
+    const isDefaultFont = !fontName || fontName === 'Default';
+    const presetDef = fontPresets[preset] || {};
+    const finalFontName = isDefaultFont ? presetDef.name : fontName;
+    const finalFontSize = (!fontSize || isDefaultFont) ? presetDef.size : fontSize;
 
-    const escapeText = (text) => text.replace(/{/g, '\\{').replace(/}/g, '\\}').replace(/"/g, '\\"');
-
-    // Default font logic
-    const presetFonts = {
-      'Hero Pop': { fontName: 'Montserrat-Bold', fontSize: 60 },
-      'Emoji Pop': { fontName: 'Poppins-Bold', fontSize: 58 },
-      'Cinematic Fade': { fontName: 'Montserrat-Bold', fontSize: 64 }
+    // ────────────────────────────────────────────────
+    // 5. TEXT HELPERS
+    // ────────────────────────────────────────────────
+    const applyCaps = t => {
+      if (caps === 'allcaps') return t.toUpperCase();
+      if (caps === 'titlecase') return t.replace(/\w\S*/g, w => w[0].toUpperCase()+w.slice(1).toLowerCase());
+      return t;
     };
-    const resolvedFont = (fontName === 'Default' && presetFonts[preset]) ? presetFonts[preset] : { fontName, fontSize };
+    const escapeText = t => t.replace(/{/g,'\\{').replace(/}/g,'\\}').replace(/"/g,'\\"');
 
+    // ────────────────────────────────────────────────
+    // 6. STYLE HEADER
+    // ────────────────────────────────────────────────
     const hasBox = !!boxColorHex;
     const borderStyle = hasBox ? 3 : 1;
-    const finalOutlineWidth = hasBox ? 0 : (outlineWidth || 0);
     const finalOutlineColor = hasBox ? '&H00000000' : hexToASS(outlineColorHex);
-    const finalBoxColor = hasBox ? hexToASS(boxColorHex) : '&H00000000';
+    const finalBoxColor     = hasBox ? hexToASS(boxColorHex) : '&H00000000';
+    const finalOutlineWidth = hasBox ? 0 : (outlineWidth||0);
 
     const style = `
 [Script Info]
 Title: Captions
 ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
+PlayResX: ${canvasWidth}
+PlayResY: ${canvasHeight}
 
 [V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${resolvedFont.fontName},${resolvedFont.fontSize},${hexToASS(fontColor)},&H00000000,${finalOutlineColor},${finalBoxColor},${effects.bold ? 1 : 0},${effects.italic ? 1 : 0},${effects.underline ? 1 : 0},0,100,100,${lineSpacing || 0},0,${borderStyle},${finalOutlineWidth},${shadow},7,80,80,10,1
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Default,${finalFontName},${finalFontSize},${hexToASS(fontColor)},&H00000000,${finalOutlineColor},${finalBoxColor},0,0,0,0,100,100,${lineSpacing},0,${borderStyle},${finalOutlineWidth},${shadow},7,${sideMargin},${sideMargin},10,1
 
 [Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 `;
 
-    const screenWidth = 1080;
-    const screenHeight = 1920;
+    // ────────────────────────────────────────────────
+    // 7. FORMAT CAPTION LINES
+    // ────────────────────────────────────────────────
+    const animKey = {
+      'Hero Pop':       'hero',
+      'Emoji Pop':      'emoji',
+      'Cinematic Fade': 'cinematic'
+    }[preset] || 'fade';
 
-    const formattedCaptions = captions.map(caption => {
-      let cleanText = escapeText(caption.text);
-      if (preset === 'Emoji Pop') cleanText = injectEmojiOnce(cleanText);
-      cleanText = applyCaps(cleanText);
+    const lines = captions.map(({ start, end, text }) => {
+      let t = applyCaps(escapeText(text.trim()));
+      if (preset === 'Emoji Pop') t = injectEmojiOnce(t);
 
-      const pos = `\\an5\\pos(${screenWidth / 2 + customX},${screenHeight / 2 - customY})`;
-      const anim = getAnimationTags(cleanText, preset.toLowerCase().replace(/ /g, ''), caption.start, caption.end);
+      const adjustedX = centerX + (customX||0);
+      const adjustedY = centerY - (customY||0);
+      const posTag    = `\\an5\\pos(${adjustedX},${adjustedY})`;
+      const animTag   = getAnimationTags(t, animKey, start, end, adjustedY);
 
-      return `Dialogue: 0,${caption.start},${caption.end},Default,,0,0,0,,{${pos}}${anim}${cleanText}`;
+      return `Dialogue: 0,${start},${end},Default,,0,0,0,,{${posTag}${animTag}}${t}`;
     }).join('\n');
 
-    const content = style + formattedCaptions;
-    await fs.promises.writeFile(filePath, content);
-    logInfo(`✅ Subtitle file written: ${filePath}`);
-    return filePath;
+    // ────────────────────────────────────────────────
+    // 8. WRITE TO DISK
+    // ────────────────────────────────────────────────
+    const outPath = `subtitles/${jobId}.ass`;
+    await fs.promises.mkdir(path.dirname(outPath), { recursive: true });
+    await fs.promises.writeFile(outPath, style + lines);
+    logInfo(`✅ Subtitle file written: ${outPath}`);
+    return outPath;
+
   } catch (err) {
     logError('Subtitle Builder Error', err);
     throw err;
