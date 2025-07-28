@@ -35,7 +35,6 @@ import { renderVideoWithSubtitles, extractAudio } from './utils/ffmpeg.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
 import whisperTranscribe from './utils/whisper.js';
 import { logInfo, logProgress, logError } from './utils/logger.js';
-import { renderVideoWithSubtitles, extractAudio, prependThumbnail } from './utils/ffmpeg.js';
 
 // ────────────────────────────────────────────────
 // 2. IN-MEMORY CACHE FOR JOB RESULTS
@@ -59,7 +58,7 @@ const secondsToAss = (seconds) => {
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
   const cs = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
-  return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs}`;
+  return ${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs};
 };
 
 // ────────────────────────────────────────────────
@@ -82,8 +81,7 @@ app.post('/subtitles', async (req, res) => {
       lineSpacing,
       caps,
       customX = 0,
-      customY = 0,
-      thumbnailUrl
+      customY = 0
     } = req.body;
 
     const jobId = uuidv4();
@@ -99,7 +97,7 @@ app.post('/subtitles', async (req, res) => {
         await fs.promises.mkdir('output', { recursive: true });
 
         // 1️⃣ Extract audio
-        const audioPath = `output/${safeFileName}.mp3`;
+        const audioPath = output/${safeFileName}.mp3;
         await extractAudio(videoUrl, audioPath);
 
         // 2️⃣ Transcription
@@ -130,38 +128,12 @@ app.post('/subtitles', async (req, res) => {
           captions
         });
 
-       // 4️⃣ Prepare video with thumbnail (if provided)
-let videoInput = videoUrl;
-
-if (thumbnailUrl) {
-  const downloadedThumbnail = `output/${safeFileName}-thumb.jpg`;
-  const downloadedVideo = `output/${safeFileName}-orig.mp4`;
-  const prependedVideo = `output/${safeFileName}-prepended.mp4`;
-
-  // Download thumbnail image
-  const thumbnailRes = await fetch(thumbnailUrl);
-  const thumbBuffer = await thumbnailRes.arrayBuffer();
-  await fs.promises.writeFile(downloadedThumbnail, Buffer.from(thumbBuffer));
-
-  // Download the original video
-  const videoRes = await fetch(videoUrl);
-  const videoBuffer = await videoRes.arrayBuffer();
-  await fs.promises.writeFile(downloadedVideo, Buffer.from(videoBuffer));
-
-  // Prepend thumbnail
-  await prependThumbnail(downloadedThumbnail, downloadedVideo, prependedVideo);
-  videoInput = prependedVideo;
-
-  logInfo('🖼️ Thumbnail prepended', { thumbnail: thumbnailUrl });
-}
-
-// 5️⃣ Render video with subtitles
-const videoOutput = `output/${safeFileName}.mp4`;
-await renderVideoWithSubtitles(videoInput, subtitleFilePath, videoOutput);
-
+        // 4️⃣ Render video with subtitles
+        const videoOutput = output/${safeFileName}.mp4;
+        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutput);
 
         // 5️⃣ Upload to Cloudinary
-        const finalUrl = await uploadToCloudinary(videoOutput, `captions-app/${safeFileName}`);
+        const finalUrl = await uploadToCloudinary(videoOutput, captions-app/${safeFileName});
         jobResults[jobId] = { success: true, videoUrl: finalUrl };
         logInfo('🎬 Rendering complete', { jobId, videoUrl: finalUrl });
 
@@ -193,5 +165,5 @@ app.get('/results/:jobId', (req, res) => {
 // 7. EXPRESS SERVER LISTENER
 // ────────────────────────────────────────────────
 app.listen(port, () => {
-  logInfo(`🚀 Server running on port ${port}`);
+  logInfo(🚀 Server running on port ${port});
 });
