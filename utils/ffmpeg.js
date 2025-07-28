@@ -19,6 +19,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import fs from 'fs';
 import { logInfo, logProgress, logError } from './logger.js';
 const execAsync = promisify(exec);
 
@@ -63,6 +64,36 @@ export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPa
     logInfo('✅ Final video rendered:', outputPath);
   } catch (err) {
     logError('Video rendering failed', err);
+    throw err;
+  }
+};
+
+/**
+ * Prepends a 0.1s thumbnail video to the start of the main video.
+ * @param {string} thumbnailPath - Path to the image file (e.g., JPG or PNG).
+ * @param {string} videoPath - Path to the main video file (MP4).
+ * @param {string} outputPath - Final output path.
+ */
+export const prependThumbnail = async (thumbnailPath, videoPath, outputPath) => {
+  try {
+    logProgress('🖼️ Prepending thumbnail image...');
+
+    // Step 1: Convert thumbnail image to short 0.1s video
+    const thumbVideoPath = 'output/thumb_video.mp4';
+    const imageToVideoCmd = `ffmpeg -y -loop 1 -i "${thumbnailPath}" -t 0.1 -vf "scale=720:1280" -c:v libx264 -pix_fmt yuv420p -r 25 "${thumbVideoPath}"`;
+    await execAsync(imageToVideoCmd);
+
+    // Step 2: Concatenate thumbnail video + original video
+    const listPath = 'output/concat_list.txt';
+    const listContent = `file '${thumbVideoPath}'\nfile '${videoPath}'`;
+    await fs.promises.writeFile(listPath, listContent);
+
+    const concatCmd = `ffmpeg -y -f concat -safe 0 -i "${listPath}" -c copy "${outputPath}"`;
+    await execAsync(concatCmd);
+
+    logInfo('✅ Thumbnail prepended to video:', outputPath);
+  } catch (err) {
+    logError('Thumbnail prepend failed', err);
     throw err;
   }
 };
