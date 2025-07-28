@@ -82,7 +82,8 @@ app.post('/subtitles', async (req, res) => {
       lineSpacing,
       caps,
       customX = 0,
-      customY = 0
+      customY = 0,
+      thumbnailUrl
     } = req.body;
 
     const jobId = uuidv4();
@@ -129,9 +130,35 @@ app.post('/subtitles', async (req, res) => {
           captions
         });
 
-        // 4️⃣ Render video with subtitles
-        const videoOutput = `output/${safeFileName}.mp4`;
-        await renderVideoWithSubtitles(videoUrl, subtitleFilePath, videoOutput);
+       // 4️⃣ Prepare video with thumbnail (if provided)
+let videoInput = videoUrl;
+
+if (thumbnailUrl) {
+  const downloadedThumbnail = `output/${safeFileName}-thumb.jpg`;
+  const downloadedVideo = `output/${safeFileName}-orig.mp4`;
+  const prependedVideo = `output/${safeFileName}-prepended.mp4`;
+
+  // Download thumbnail image
+  const thumbnailRes = await fetch(thumbnailUrl);
+  const thumbBuffer = await thumbnailRes.arrayBuffer();
+  await fs.promises.writeFile(downloadedThumbnail, Buffer.from(thumbBuffer));
+
+  // Download the original video
+  const videoRes = await fetch(videoUrl);
+  const videoBuffer = await videoRes.arrayBuffer();
+  await fs.promises.writeFile(downloadedVideo, Buffer.from(videoBuffer));
+
+  // Prepend thumbnail
+  await prependThumbnail(downloadedThumbnail, downloadedVideo, prependedVideo);
+  videoInput = prependedVideo;
+
+  logInfo('🖼️ Thumbnail prepended', { thumbnail: thumbnailUrl });
+}
+
+// 5️⃣ Render video with subtitles
+const videoOutput = `output/${safeFileName}.mp4`;
+await renderVideoWithSubtitles(videoInput, subtitleFilePath, videoOutput);
+
 
         // 5️⃣ Upload to Cloudinary
         const finalUrl = await uploadToCloudinary(videoOutput, `captions-app/${safeFileName}`);
