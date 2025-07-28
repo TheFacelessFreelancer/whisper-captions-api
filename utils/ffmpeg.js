@@ -4,13 +4,6 @@
  * Includes:
  * - Extracting audio from videos
  * - Rendering subtitles on videos with scaling
- *
- * ────────────────────────────────────────────────
- * TABLE OF CONTENTS
- * ────────────────────────────────────────────────
- * 1. IMPORTS AND UTILITIES
- * 2. AUDIO EXTRACTION: extractAudio(videoPath, audioPath)
- * 3. VIDEO RENDERING: renderVideoWithSubtitles(videoPath, subtitlePath, outputPath)
  */
 
 // ────────────────────────────────────────────────
@@ -33,7 +26,7 @@ const execAsync = promisify(exec);
 export const extractAudio = async (videoPath, audioPath) => {
   try {
     logProgress('🔊 Extracting audio with FFmpeg');
-    const command = ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y;
+    const command = `ffmpeg -i "${videoPath}" -vn -acodec libmp3lame -ar 44100 -b:a 192k "${audioPath}" -y`;
     await execAsync(command);
     logInfo('✅ Audio extracted:', audioPath);
   } catch (err) {
@@ -56,7 +49,7 @@ export const renderVideoWithSubtitles = async (videoPath, subtitlePath, outputPa
     logProgress('🎬 Rendering video with subtitles');
 
     const absoluteSubtitlePath = path.resolve(subtitlePath).replace(/\\/g, '/');
-    const command = ffmpeg -y -i "${videoPath}" -vf "subtitles='${absoluteSubtitlePath}'" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}";
+    const command = `ffmpeg -y -i "${videoPath}" -vf "subtitles='${absoluteSubtitlePath}'" -c:v libx264 -preset ultrafast -crf 28 -c:a copy "${outputPath}"`;
 
     logProgress('▶ Running FFmpeg command', command);
     await execAsync(command);
