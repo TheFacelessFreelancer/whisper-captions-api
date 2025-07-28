@@ -35,6 +35,7 @@ import { renderVideoWithSubtitles, extractAudio } from './utils/ffmpeg.js';
 import { uploadToCloudinary } from './utils/cloudinary.js';
 import whisperTranscribe from './utils/whisper.js';
 import { logInfo, logProgress, logError } from './utils/logger.js';
+import { renderVideoWithSubtitles, extractAudio, prependThumbnail } from './utils/ffmpeg.js';
 
 // ────────────────────────────────────────────────
 // 2. IN-MEMORY CACHE FOR JOB RESULTS
